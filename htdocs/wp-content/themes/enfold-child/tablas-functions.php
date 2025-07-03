@@ -41,11 +41,16 @@ function mostrar_tabla_sector() {
                 'value' => $sector_filtro,
                 'compare' => '='
             ),
-            array(
+            /*array(
                 'key' => 'subsector_proyecto',
                 'value' => $subsector_filtro,
                 'compare' => '='
-            )
+            )*/
+			array(
+			'key' => 'subsector_proyecto',
+			'value' => is_array($subsector_filtro) ? $subsector_filtro : array($subsector_filtro),
+			'compare' => 'IN'
+)
         )
     );
     $query = new WP_Query($args);
@@ -93,8 +98,9 @@ function mostrar_tabla_sector() {
     wp_reset_query();
     $output = '';
     if (!$tabla_otras) {
-        //$output .= '<p>No se encontraron proyectos en las etapas Ejecución, Licitación y Preinversión(Nuevos).</p>';
+        $output .= '<p>No se encontraron proyectos en las etapas Ejecución, Licitación y Preinversión(Nuevos).</p>';
     } else {
+		 $output .= '<p>se encontraron proyectos en las etapas Ejecución, Licitación y Preinversión(Nuevos).</p>';
         $output .= '<button class="btn-acordeon" aria-expanded="false">+ Proyectos Nuevos</button>';
         $output .= '<div class="contenido-acordeon tabla-scroll" style="display:none;">';
         $output .= '<table class="tabla-etapa"><thead><tr>
@@ -106,6 +112,7 @@ function mostrar_tabla_sector() {
     if (!$tabla_operacion) {
         $output .= '<p>No se encontraron proyectos en la etapa Operación.</p>';
     } else {
+		$output .= '<p>se encontraron proyectos en la etapa Operación.</p>';
         $output .= '<button class="btn-acordeon" aria-expanded="false">+ Proyectos en Operación</button>';
         $output .= '<div class="contenido-acordeon tabla-scroll" style="display:none;">';
         $output .= '<table class="tabla-etapa"><thead><tr>
@@ -120,14 +127,62 @@ function mostrar_tabla_sector() {
 add_shortcode('tabla_sector', 'mostrar_tabla_sector'); 
 function obtener_filtros_por_pagina($page_id) {
     $filtropag = array(
-        9386 => array('sector' => '1428', 'subsector' => '4094'),
-        88706 => array('sector' => '1428', 'subsector' => '1443'),
-        9377 => array('sector' => '1428', 'subsector' => '1444'),
-        9383 => array('sector' => '1423', 'subsector' => '12271'),
-        94774 => array('sector' => '1426', 'subsector' => '70363'),
-        9354 => array('sector' => '1428', 'subsector' => '1454'),
-	14365 => array('sector' => '1428', 'subsector' => '1454'),
+        9386 => array('sector' => '1428', 'subsector' => '4094'), // transporte, movilidad urbana
+        88706 => array('sector' => '1428', 'subsector' => '1443'), //transporte, aeropuertos
+        9377 => array('sector' => '1428', 'subsector' => '1444'), //transporte, puertos
+        9383 => array('sector' => '1423', 'subsector' => '12271'), // telecomunicaciones, red de telecomunicaciones
+		9367 => array('sector' => '1426', 'subsector' => array('4057', '5360','4088','4118')), // Agua y medio ambiente - Otros, Gestión de Agua , Saneamiento de Agua
+        9354 => array('sector' => '1428', 'subsector' => '1454'), // transporte - carrtera y punetes
+		14365 => array('sector' => '1428', 'subsector' => '1454'), // transporte - carretera y puentes
+		9357 => array('sector' => '1425' , 'subsector' => array('4086','13720','16559','7392','38509','7685','6931','7391')), // Electricidad
+		9363 => array('sector' => '1428', 'subsector' => '1445'), // transporte - ferrocarriles
+		9370 => array('sector' => '4037', 'subsector' => array('4084','4128')), // hidricarburos - 
+		94774 => array ('sector' => '1426' , 'subsector' => '70363'), // agua y medio ambiente - residuos solidos
+		
+		// 14382 transporte urbano en ingles
+		
         // Agrega más según sea necesario
+		
+				/* relaicones
+		
+		Transporte (ID: 1428)
+Ferrocarriles (ID: 1445)
+Carreteras / Puentes (ID: 1454)
+Puertos (ID: 1444)
+Aeropuertos (ID: 1443)
+Movilidad Urbana (ID: 4094)
+	Agua y Medio Ambiente (ID: 1426)
+Abastecimiento de Agua (ID: 4057)
+Otros (ID: 5360)
+Saneamiento de Agua (ID: 4118)
+Gestión de Agua (ID: 4088)
+	-- Residuos Sólidos (ID: 70363)
+	
+	Industria (ID: 16472)
+Industria (ID: 53731)
+	Electricidad (ID: 1425)
+Generación (ID: 4086)
+Transmisión / Distribución (ID: 13720)
+Energía Solar (ID: 16559)
+Energía Eólica (ID: 7392)
+Turbogas (ID: 38509)
+Energía Geotérmica (ID: 7685)
+Energía Térmica (ID: 6931)
+Energía Hidráulica (ID: 7391)
+	Inmobiliario y Turismo (ID: 4041)
+Turismo (ID: 10503)
+	Infraestructura Social (ID: 1424)
+Cultura y Esparcimiento (ID: 4066)
+Salud (ID: 1447)
+Seguridad Pública y Justicia (ID: 4122)
+Educación / Ciencia y Tecnología (ID: 4072)
+	Hidrocarburos (ID: 4037)
+Exploración/Producción (ID: 4084)
+Transporte / Almacenamiento / Distribución (ID: 4128)
+	Telecomunicaciones (ID: 1423)
+Red de Telecomunicaciones (ID: 12271)
+		
+		*/
     );
     return isset($filtropag[$page_id]) ? $filtropag[$page_id] : false;
 }
