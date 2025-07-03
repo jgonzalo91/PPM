@@ -187,7 +187,12 @@ function obtener_filtros_por_pagina_en($page_id) {
 
 		
 		// ingles
+		14369 => array('sector' => '1428', 'subsector' => '1443'), // transporte, aeropuertos
+		14395 => array('sector' => '1426', 'subsector' => array('4057', '5360','4088','4118')), // agua y medio ambiente
 		14382 => array('sector' => '1428', 'subsector' => '4094'), // transporte, movilidad urbana
+		14365 => array('sector' => '1428', 'subsector' => '1454'), // transporte, carreteras y puentes
+		14410 => array('sector' => '1425' , 'subsector' => array('4086','13720','16559','7392','38509','7685','6931','7391')), // Electricidad
+		
 		
         // Agrega más según sea necesario
 		
