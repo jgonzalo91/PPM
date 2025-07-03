@@ -140,13 +140,12 @@ function obtener_filtros_por_pagina($page_id) {
         9383 => array('sector' => '1423', 'subsector' => '12271'), // telecomunicaciones, red de telecomunicaciones
 		9367 => array('sector' => '1426', 'subsector' => array('4057', '5360','4088','4118')), // Agua y medio ambiente - Otros, Gestión de Agua , Saneamiento de Agua
         9354 => array('sector' => '1428', 'subsector' => '1454'), // transporte - carrtera y punetes
-		14365 => array('sector' => '1428', 'subsector' => '1454'), // transporte - carretera y puentes
 		9357 => array('sector' => '1425' , 'subsector' => array('4086','13720','16559','7392','38509','7685','6931','7391')), // Electricidad
 		9363 => array('sector' => '1428', 'subsector' => '1445'), // transporte - ferrocarriles
 		9370 => array('sector' => '4037', 'subsector' => array('4084','4128')), // hidricarburos - 
 		94774 => array ('sector' => '1426' , 'subsector' => '70363'), // agua y medio ambiente - residuos solidos
 		
-		// 14382 transporte urbano en ingles
+		
 		
         // Agrega más según sea necesario
 		
