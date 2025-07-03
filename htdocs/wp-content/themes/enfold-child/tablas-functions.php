@@ -71,8 +71,15 @@ function mostrar_tabla_sector() {
         $etapa_id = get_post_meta($post_id, 'etapa_proyecto', true);
         $sector = $sector_id ? get_the_title($sector_id) : 'Sin Sector';
         $subsector = $subsector_id ? get_the_title($subsector_id) : 'Sin Subsector';
-        $etapa = $etapa_id ? get_the_title($etapa_id) : 'Sin Etapa';
-        $etapa_normalizada = strtolower(trim($etapa));
+        //$etapa = $etapa_id ? get_the_title($etapa_id) : 'Sin Etapa';
+        //$etapa_normalizada = strtolower(trim($etapa));
+		
+		$etapa = $etapa_id ? get_the_title($etapa_id) : 'Sin Etapa';
+		$etapa = trim($etapa);
+       // $etapa_normalizada = strtolower(trim($etapa));
+		$etapa_normalizada = mb_strtolower(trim($etapa), 'UTF-8');
+		
+		
         if (!in_array($etapa_normalizada, $etapas_validas)) {
             continue;
         }
@@ -98,9 +105,9 @@ function mostrar_tabla_sector() {
     wp_reset_query();
     $output = '';
     if (!$tabla_otras) {
-        $output .= '<p>No se encontraron proyectos en las etapas Ejecución, Licitación y Preinversión(Nuevos).</p>';
+        //$output .= '<p>No se encontraron proyectos en las etapas Ejecución, Licitación y Preinversión(Nuevos).</p>';
     } else {
-		 $output .= '<p>se encontraron proyectos en las etapas Ejecución, Licitación y Preinversión(Nuevos).</p>';
+		 //$output .= '<p>se encontraron proyectos en las etapas Ejecución, Licitación y Preinversión(Nuevos).</p>';
         $output .= '<button class="btn-acordeon" aria-expanded="false">+ Proyectos Nuevos</button>';
         $output .= '<div class="contenido-acordeon tabla-scroll" style="display:none;">';
         $output .= '<table class="tabla-etapa"><thead><tr>
@@ -110,9 +117,9 @@ function mostrar_tabla_sector() {
         $output .= '</div>';
     }
     if (!$tabla_operacion) {
-        $output .= '<p>No se encontraron proyectos en la etapa Operación.</p>';
+        //$output .= '<p>No se encontraron proyectos en la etapa Operación.</p>';
     } else {
-		$output .= '<p>se encontraron proyectos en la etapa Operación.</p>';
+		//$output .= '<p>se encontraron proyectos en la etapa Operación.</p>';
         $output .= '<button class="btn-acordeon" aria-expanded="false">+ Proyectos en Operación</button>';
         $output .= '<div class="contenido-acordeon tabla-scroll" style="display:none;">';
         $output .= '<table class="tabla-etapa"><thead><tr>
