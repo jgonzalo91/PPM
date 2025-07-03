@@ -14,6 +14,14 @@ if (file_exists($leo_functions_path)) {
     error_log('El archivo leo-functions.php no existe en el directorio: ' . $leo_functions_path);
 }
 
+$leo_functions_en_path = dirname(__FILE__) . '/tablas-functions_en.php';
+if (file_exists($leo_functions_en_path)) {
+    require_once $leo_functions_en_path;
+} else {
+    // Opcional: manejar el error, loguear o mostrar mensaje sin romper el sitio
+    error_log('El archivo leo-functions_en.php no existe en el directorio: ' . $leo_functions_en_path);
+}
+
 function force_strong_passwords($errors, $update, $user_data) {
     $user_login = $user_data->user_login;
     $user_pass = $user_data->user_pass;
