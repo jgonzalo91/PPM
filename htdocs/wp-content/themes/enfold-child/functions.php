@@ -1,4 +1,9 @@
 <?php
+
+
+
+
+
 define ('VERSION', '1.6');//Actualizacion 17 May 2019
 // Actualización 10 Oct 2019 por en vehiculos emisora por nombre corto en pipeline
 function version_id() {
@@ -6,16 +11,18 @@ function version_id() {
   return VERSION;
 }
 
-$leo_functions_path = dirname(__FILE__) . '/tablas-functions.php';
-if (file_exists($leo_functions_path)) {
+
+
+$leo_functions_path = dirname(__FILE__) . '/tablas-functions.php'; if (file_exists($leo_functions_path)) {
     require_once $leo_functions_path;
 } else {
     // Opcional: manejar el error, loguear o mostrar mensaje sin romper el sitio
     error_log('El archivo leo-functions.php no existe en el directorio: ' . $leo_functions_path);
 }
 
-$leo_functions_en_path = dirname(__FILE__) . '/tablas-functions_en.php';
-if (file_exists($leo_functions_en_path)) {
+
+
+$leo_functions_en_path = dirname(__FILE__) . '/tablas-functions_en.php'; if (file_exists($leo_functions_en_path)) {
     require_once $leo_functions_en_path;
 } else {
     // Opcional: manejar el error, loguear o mostrar mensaje sin romper el sitio
@@ -1092,88 +1099,51 @@ include 'vehiculo/exportpdf.php';
 include 'vehiculo_en/exportpdf.php';
 include 'api.php';
 
-
-
-function cargar_accesibilidad_local() {
-    // Asegúrate de que jQuery esté disponible
-    wp_enqueue_script('jquery');
-
-    // Enlazar CSS local
-    wp_enqueue_style(
-        'accesibilidad-css',
-        get_stylesheet_directory_uri() . '/css/accesibilidad.min.css',
-        array(),
-        null
-    );
-
-    // Enlazar JS local (después de jQuery)
-    wp_enqueue_script(
-        'accesibilidad-js',
-        get_stylesheet_directory_uri() . '/js/accesibilidad.min.js',
-        array('jquery'),
-        null,
-        true
-    );
-}
-add_action('wp_enqueue_scripts', 'cargar_accesibilidad_local');
-
-
-
-
-
-
-
-
 // ** Presidencia Footer **/
 
 function insertar_footer_presidencia() {
     ?>
+    <div class="iframe-container">
+        <iframe src="/wp-content/themes/enfold-child/footer.html" frameborder="0" style="width: 100%;" id="myIframe"></iframe>
+    </div>
+    <?php
+}
+
+// Agregar el contenido al pie de página
+add_action('wp_footer', 'insertar_footer_presidencia', 100);
+
+// Ayuda a ajustar el iframe a su tamaño total
+function ajustar_footer_presidencia() {
+    ?>
     <script>
+        function resizeIframe(iframe) {
+            const newHeight = iframe.contentWindow.document.body.scrollHeight;
+            if (iframe.style.height !== newHeight + 'px') {
+                iframe.style.height = newHeight + 'px';
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
-            // Crear contenedor principal
-            var contenedor = document.createElement('div');
-            contenedor.id = 'contenido-footer-html';
-            contenedor.style.width = '100%';
-            contenedor.style.overflow = 'hidden';
-            contenedor.style.margin = '0';
-            contenedor.style.padding = '0';
-            contenedor.style.boxSizing = 'border-box';
+            const iframe = document.getElementById('myIframe');
+            iframe.onload = function() {
+                resizeIframe(iframe);
+            };
 
-            // Crear Shadow DOM
-            var shadowRoot = contenedor.attachShadow({ mode: 'open' });
+            // Reajusta la altura cada vez que se redimensiona la ventana
+            window.onresize = function() {
+                resizeIframe(iframe);
+            };
 
-            // Cargar contenido del footer externo
-            fetch('/wp-content/themes/enfold-child/footer.html')
-                .then(function(response) {
-                    return response.text();
-                })
-                .then(function(html) {
-                    shadowRoot.innerHTML = html;
-
-                    // Ejecutar scripts dentro del HTML cargado (si los hay)
-                    var scripts = shadowRoot.querySelectorAll('script');
-                    scripts.forEach(function(script) {
-                        var nuevoScript = document.createElement('script');
-                        if (script.src) {
-                            nuevoScript.src = script.src;
-                        } else {
-                            nuevoScript.textContent = script.textContent;
-                        }
-                        shadowRoot.appendChild(nuevoScript);
-                    });
-                })
-                .catch(function(error) {
-                    console.error('Error al cargar el contenido del footer:', error);
-                });
-
-            // Agregar el contenedor al pie del body
-            document.body.appendChild(contenedor);
+            // Intervalo para ajustar la altura periódicamente
+            setInterval(() => {
+                resizeIframe(iframe);
+            }, 500); // Ajusta el tiempo según sea necesario
         });
     </script>
     <?php
 }
 
-add_action('wp_footer', 'insertar_footer_presidencia', 100);
+add_action('wp_footer', 'ajustar_footer_presidencia');
 
 
 // ** Presidencia Header **/
@@ -1184,359 +1154,104 @@ add_action('wp_footer', 'insertar_footer_presidencia', 100);
 function insertar_iframe_en_header_meta() {
     ?>
     <script>
-    document.addEventListener("DOMContentLoaded", function() {
-       
-	  
-
-        var headerMeta = document.getElementById('header_meta');
-        if (headerMeta) {
-            // Crear un contenedor host para Shadow DOM
-            var host = document.createElement('div');
-            host.id = 'shadow-host-header';
-            host.style.width = '100%';
-            host.style.height = '55px';
-
-            // Crear shadow root
-            var shadow = host.attachShadow({mode: 'open'});
-
-            // Cargar el HTML dentro del shadow root
-            fetch('/wp-content/themes/enfold-child/header.html')
-                .then(response => response.text())
-                .then(html => {
-                    shadow.innerHTML = html;
-					
-					
-                })
-                .catch(error => {
-                    console.error('Error al cargar el contenido del header:', error);
-                });
-
-            headerMeta.insertBefore(host, headerMeta.firstChild);
-        }
-    });
+        document.addEventListener("DOMContentLoaded", function() {
+            var headerMeta = document.getElementById('header_meta');
+            if (headerMeta) {
+                var iframe = document.createElement('iframe');
+                iframe.src = '/wp-content/themes/enfold-child/header.html'; // Reemplaza esto con la URL de tu iframe
+                iframe.style.width = '100%'; // Ajusta el ancho según sea necesario
+                iframe.style.height = '50px'; // Ajusta la altura según sea necesario
+                headerMeta.insertBefore(iframe, headerMeta.firstChild);
+            }
+        });
     </script>
     <?php
 }
 add_action('wp_head', 'insertar_iframe_en_header_meta');
 
 
+//mostar campos proyectos prioritarios
 
-
-// Taxonomía: Sector
-register_taxonomy('sector_proyecto_p', 'proyecto_prioritario', [
-    'label' => 'Sector P', // Nombre que se mostrará en el admin
-    'hierarchical' => false, // false: funciona como etiquetas (tags), true: como categorías jerárquicas
-    'public' => true, // visible en el frontend
-    'rewrite' => ['slug' => 'sector_p'], // slug en URL
-	 'show_ui' => true // muestra la interfaz en el admin de WordPress
-]);
-
-// Taxonomía: Subsector
-register_taxonomy('subsector_proyecto_p', 'proyecto_prioritario', [
-    'label' => 'Subsector P',
-    'hierarchical' => false,
-    'public' => true,
-    'rewrite' => ['slug' => 'subsector_p'],
-	'show_ui' => true // <-- asegúrate de tener esto
-]);
-
-
-add_action('wp_ajax_get_subsectores_by_sector', 'get_subsectores_by_sector');
-add_action('wp_ajax_nopriv_get_subsectores_by_sector', 'get_subsectores_by_sector');
-
-function get_subsectores_by_sector() {
-	error_log('Sector ID recibido: ' . print_r($_POST['sector_id'], true));
-    $sector_id = intval($_POST['sector_id']);
-
-    $subsectores = get_terms([
-        'taxonomy' => 'subsector_proyecto_p',
-        'hide_empty' => false,
-      'meta_query' => [
-            [
-                'key' => 'sector_relacionado',
-                //'value' => '"' . $sector_id . '"',
-				'value' =>$sector_id,
-                'compare' => '='
-				
-            ]
-        ]
-    ]);
-
-    $data = [];
-    foreach ($subsectores as $sub) {
-        $data[] = [
-            'term_id' => $sub->term_id,
-            'name' => $sub->name
-        ];
-    }
-
-    wp_send_json_success($data);
-}
-
-function cargar_js_sector_subsector() {
-    wp_enqueue_script(
-        'sectores-subsectores', // nombre identificador
-        get_stylesheet_directory_uri() . '/js/sectores-subsectores.js', // ruta al script
-        array('jquery'), // dependencia
-        null, // versión (puedes usar '1.0' o null)
-        true // cargar en footer
-    );
-
-    // Enviamos la URL de admin-ajax.php al JS
-    wp_localize_script('sectores-subsectores', 'ajax_sector', array(
-        'ajaxurl' => admin_url('admin-ajax.php')
-    ));
-}
-add_action('wp_enqueue_scripts', 'cargar_js_sector_subsector');
-
-function shortcode_selector_sectores() {
-    ob_start(); // Inicia buffer para capturar el HTML
-    ?>
-    <select id="sector-select">
-        <option value="">Selecciona un sector</option>
-        <?php
-        $sectores = get_terms(array(
-            'taxonomy' => 'sector_proyecto_p',
-            'hide_empty' => false
-        ));
-        foreach ($sectores as $sector) {
-            echo '<option value="' . esc_attr($sector->term_id) . '">' . esc_html($sector->name) . '</option>';
-        }
-        ?>
-    </select>
-
-    <select id="subsector-select" disabled>
-        <option value="">Selecciona un subsector</option>
-    </select>
-    <?php
-    return ob_get_clean(); // Devuelve el contenido como salida del shortcode
-}
-add_shortcode('selector_sectores', 'shortcode_selector_sectores');
-
-
-// solo para visualizar id de sectpr
-add_action('wp_ajax_get_sectores', 'get_sectores');
-
-
-function get_sectores() {
-    $sectores = get_terms(array(
-        'taxonomy' => 'sector_proyecto_p',
-        'hide_empty' => false
-    ));
-
-    $data = array();
-    foreach ($sectores as $sector) {
-        $data[] = array(
-            'term_id' => $sector->term_id,
-            'name' => $sector->name
-        );
-    }
-
-    wp_send_json_success($data);
-}
-
-
-//Agrega un campo en el panel de administración al editar subsectores
-add_action('subsector_proyecto_p_edit_form_fields', 'mostrar_sector_relacionado_en_subsector');
-function mostrar_sector_relacionado_en_subsector($term) {
-    $valor = get_term_meta($term->term_id, 'sector_relacionado', true);
-    $sectores = get_terms(array(
-        'taxonomy' => 'sector_proyecto_p',
-        'hide_empty' => false
-    ));
-    ?>
-    <tr class="form-field">
-        <th scope="row"><label for="sector_relacionado">Sector relacionado B</label></th>
-        <td>
-            <select name="sector_relacionado" id="sector_relacionado">
-                <option value="">— Selecciona —</option>
-                <?php foreach ($sectores as $sector): ?>
-                    <option value="<?php echo esc_attr($sector->term_id); ?>" <?php selected($valor, $sector->term_id); ?>>
-                        <?php echo esc_html($sector->name); ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-        </td>
-    </tr>
-    <?php
-}
-
-//Agrega un campo en el panel de administración al crear
-add_action('subsector_proyecto_p_add_form_fields', 'agregar_sector_relacionado_nuevo_subsector');
-function agregar_sector_relacionado_nuevo_subsector($taxonomy) {
-    $sectores = get_terms(array(
-        'taxonomy' => 'sector_proyecto_p',
-        'hide_empty' => false
-    ));
-    ?>
-    <div class="form-field">
-        <label for="sector_relacionado">Sector relacionado B</label>
-        <select name="sector_relacionado" id="sector_relacionado">
-            <option value="">— Selecciona —</option>
-            <?php foreach ($sectores as $sector): ?>
-                <option value="<?php echo esc_attr($sector->term_id); ?>"><?php echo esc_html($sector->name); ?></option>
-            <?php endforeach; ?>
-        </select>
-    </div>
-    <?php
-}
-
-add_action('create_subsector_proyecto_p', 'guardar_sector_relacionado_en_subsector');
-
-
-//Guardar el metadato al actualizar el término
-add_action('edited_subsector_proyecto_p', 'guardar_sector_relacionado_en_subsector');
-function guardar_sector_relacionado_en_subsector($term_id) {
-    if (isset($_POST['sector_relacionado'])) {
-        update_term_meta($term_id, 'sector_relacionado', intval($_POST['sector_relacionado']));
-    }
-}
-
-
-// Oculta las cajas estándar de taxonomías
-add_action('admin_menu', function() {
-    remove_meta_box('tagsdiv-sector_proyecto_p', 'proyecto_prioritario', 'side');
-    remove_meta_box('tagsdiv-subsector_proyecto_p', 'proyecto_prioritario', 'side');
-});
-
-
-//Agrega la nueva caja con select sector/subsector
-add_action('add_meta_boxes', function() {
+/*add_action('add_meta_boxes', function() {
     add_meta_box(
-        'sector_subsector_custom',
-        'Sector y Subsector',
-        'render_sector_subsector_box',
+        'visibilidad_campo_proyecto',
+        'Visibilidad de Campos',
+        'render_visibilidad_campo_box',
         'proyecto_prioritario',
         'side',
-        'default'
+        'high'
     );
-});
+});*/
 
-function render_sector_subsector_box($post) {
-    // Obtener términos actuales del post
-    $sector_actual = wp_get_post_terms($post->ID, 'sector_proyecto_p', ['fields' => 'ids']);
-    $subsector_actual = wp_get_post_terms($post->ID, 'subsector_proyecto_p', ['fields' => 'ids']);
 
-    $sectores = get_terms(['taxonomy' => 'sector_proyecto_p', 'hide_empty' => false]);
-    $subsectores = get_terms(['taxonomy' => 'subsector_proyecto_p', 'hide_empty' => false]);
-
-    // Campo select para SECTOR
-    echo '<label for="custom_sector_select">Sector:</label>';
-    echo '<select name="custom_sector_select" id="custom_sector_select" class="widefat">';
-    echo '<option value="">Selecciona un sector</option>';
-    foreach ($sectores as $sector) {
-        $selected = (in_array($sector->term_id, $sector_actual)) ? 'selected' : '';
-        echo '<option value="' . esc_attr($sector->term_id) . '" ' . $selected . '>' . esc_html($sector->name) . '</option>';
-    }
-    echo '</select>';
-
-    // Campo select para SUBSECTOR (todos inicialmente)
-    echo '<label for="custom_subsector_select">Subsector:</label>';
-    echo '<select name="custom_subsector_select" id="custom_subsector_select" class="widefat">';
-    echo '<option value="">Selecciona un subsector</option>';
-    foreach ($subsectores as $sub) {
-        $sector_rel = get_term_meta($sub->term_id, 'sector_relacionado', true);
-        $selected = (in_array($sub->term_id, $subsector_actual)) ? 'selected' : '';
-        echo '<option value="' . esc_attr($sub->term_id) . '" data-sector="' . esc_attr($sector_rel) . '" ' . $selected . '>' . esc_html($sub->name) . '</option>';
-    }
-    echo '</select>';
-
-    // Script para filtrar subsectores según sector
-    ?>
-    <script>
-    jQuery(document).ready(function($) {
-        function filtrarSubsectores() {
-            var sectorID = $('#custom_sector_select').val();
-            $('#custom_subsector_select option').each(function() {
-                var relatedSector = $(this).data('sector');
-                if (!relatedSector || sectorID === '' || relatedSector == sectorID) {
-                    $(this).show();
-                } else {
-                    $(this).hide();
-                }
-            });
+//agregar los campos de proyectos
+/*function render_visibilidad_campo_box($post) {
+    $campos = [
+        'nombre_proyecto' => 'Nombre | Iniciativa',
+	'ultima_situacion_proyecto' => 'Ultima Situacion',
+	'sector_proyecto' => 'Sector',
+	'subsector_proyecto' => 'Subsector',
+	'descripcion_proyecto' => 'Descripcion',
+	'notas_internas_proyecto' => 'Notas Internas',
+	'datos_de_contacto_proyecto' => 'Datos de Contacto'
+    ];
+    foreach ($campos as $tax => $label) {
+       
+        if (isset($_POST["mostrar_$tax"])) {
+            $checked = 'checked';
+        } else {
+            $valor = get_post_meta($post->ID, "_mostrar_$tax", true);
+            $checked = ($valor === '' || $valor === '1') ? 'checked' : '';
         }
+        echo '<p><label>';
+        echo '<input type="checkbox" name="mostrar_' . esc_attr($tax) . '" value="1" ' . $checked . '> ';
+        echo esc_html($label);
+        echo '</label></p>';
+    }
+}*/
 
-        $('#custom_sector_select').on('change', function() {
-            filtrarSubsectores();
-            $('#custom_subsector_select').val('');
-        });
 
-        filtrarSubsectores(); // inicial
-    });
-    </script>
-    <?php
-}
-
-//Guarda los valores al guardar el post
-add_action('save_post', function($post_id) {
+// guardar en el post
+/*add_action('save_post', function($post_id) {
     if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
-
-    if (isset($_POST['custom_sector_select'])) {
-        $sector_id = intval($_POST['custom_sector_select']);
-        wp_set_post_terms($post_id, [$sector_id], 'sector_proyecto_p', false);
+    $campos = ['nombre_proyecto','ultima_situacion_proyecto','sector_proyecto','subsector_proyecto','descripcion_proyecto','notas_internas_proyecto','datos_de_contacto_proyecto'];
+	
+    foreach ($campos as $campo) {
+        if (isset($_POST["mostrar_$campo"])) {
+            update_post_meta($post_id, "_mostrar_$campo", '1');
+        } else {
+            delete_post_meta($post_id, "_mostrar_$campo");
+        }
     }
+});*/
 
-    if (isset($_POST['custom_subsector_select'])) {
-        $subsector_id = intval($_POST['custom_subsector_select']);
-        wp_set_post_terms($post_id, [$subsector_id], 'subsector_proyecto_p', false);
-    }
-});
-
-
-//shorcode
-function mostrar_sector_subsector_shortcode($atts) {
-    if (!is_singular('proyecto_prioritario')) return '';
-
-    $post_id = get_the_ID();
-
-    $sectores = wp_get_post_terms($post_id, 'sector_proyecto_p');
-    $subsectores = wp_get_post_terms($post_id, 'subsector_proyecto_p');
-
-    $output = '<div class="info-sector-subsector">';
-    if (!empty($sectores)) {
-        $output .= '<p><strong>Sector:</strong> ' . esc_html($sectores[0]->name) . '</p>';
-    }
-    if (!empty($subsectores)) {
-        $output .= '<p><strong>Subsector:</strong> ' . esc_html($subsectores[0]->name) . '</p>';
-    }
-    $output .= '</div>';
-
-    return $output;
-}
-add_shortcode('mostrar_sector_subsector', 'mostrar_sector_subsector_shortcode');
-
-
-
-//administrador de campos
 
 // Crear página de opciones
-add_action('admin_menu', function() {
+add_action('admin_menu', 'crear_menu_campos_visibilidad');
+function crear_menu_campos_visibilidad() {
     add_menu_page(
         'Campos de Visibilidad',
-        'Campos Visibilidad',
+        'Campos Visibilidad Proyectos Prioritarios',
         'manage_options',
         'campos-visibilidad',
         'campos_visibilidad_admin_page',
         'dashicons-visibility',
         100
     );
-});
+}
+
+// Encolar jQuery UI Sortable en admin
+add_action('admin_enqueue_scripts', 'enqueue_sortable_script');
+function enqueue_sortable_script() {
+    wp_enqueue_script('jquery-ui-sortable');
+}
 
 // Renderizar la página
 function campos_visibilidad_admin_page() {
-    // Encolar jQuery UI Sortable en el admin
-    function enqueue_sortable_script() {
-        wp_enqueue_script('jquery-ui-sortable');
-    }
-    add_action('admin_enqueue_scripts', 'enqueue_sortable_script');
+    $campos = get_option('campos_visibilidad_proyecto', array());
 
-    // Obtener campos guardados
-    $campos = get_option('campos_visibilidad_proyecto', []);
-
-    // Guardar si se envió el formulario
     if (isset($_POST['campos_visibilidad_nonce']) && wp_verify_nonce($_POST['campos_visibilidad_nonce'], 'guardar_campos_visibilidad')) {
-        $nuevos_campos = [];
+        $nuevos_campos = array();
 
         if (!empty($_POST['campo_key']) && !empty($_POST['campo_label'])) {
             foreach ($_POST['campo_key'] as $i => $key) {
@@ -1557,7 +1272,9 @@ function campos_visibilidad_admin_page() {
         <h1>Editar campos de visibilidad</h1>
         <form method="post">
             <?php wp_nonce_field('guardar_campos_visibilidad', 'campos_visibilidad_nonce'); ?>
-            <table class="form-table" id="campos-table">
+	        	    
+	
+	<table class="form-table" id="campos-table">
                 <thead>
                     <tr>
                         <th>Nombre del campo (key)</th>
@@ -1580,6 +1297,10 @@ function campos_visibilidad_admin_page() {
                     </tr>
                 </tbody>
             </table>
+</div>
+
+
+
             <p><button type="button" class="button" id="agregar-fila">+ Agregar campo</button></p>
             <p><input type="submit" class="button button-primary" value="Guardar"></p>
         </form>
@@ -1587,7 +1308,6 @@ function campos_visibilidad_admin_page() {
 
     <script>
         jQuery(document).ready(function($){
-            // Hacer sortable el tbody
             $('#campos-table tbody').sortable({
                 axis: 'y',
                 cursor: 'move',
@@ -1596,19 +1316,15 @@ function campos_visibilidad_admin_page() {
                 opacity: 0.7
             });
 
-            // Agregar fila nueva
             $('#agregar-fila').on('click', function () {
-                const row = `
-                    <tr>
-                        <td><input type="text" name="campo_key[]"></td>
-                        <td><input type="text" name="campo_label[]"></td>
-                        <td><button type="button" class="button eliminar-fila">✖</button></td>
-                    </tr>
-                `;
+                var row = '<tr>' +
+                          '<td><input type="text" name="campo_key[]"></td>' +
+                          '<td><input type="text" name="campo_label[]"></td>' +
+                          '<td><button type="button" class="button eliminar-fila">✖</button></td>' +
+                          '</tr>';
                 $('#campos-table tbody').append(row);
             });
 
-            // Eliminar fila
             $(document).on('click', '.eliminar-fila', function () {
                 $(this).closest('tr').remove();
             });
@@ -1617,10 +1333,9 @@ function campos_visibilidad_admin_page() {
     <?php
 }
 
-
-
-
-add_action('add_meta_boxes', function() {
+// Metabox
+add_action('add_meta_boxes', 'agregar_metabox_visibilidad');
+function agregar_metabox_visibilidad() {
     add_meta_box(
         'visibilidad_campos',
         'Visibilidad de Campos',
@@ -1629,32 +1344,44 @@ add_action('add_meta_boxes', function() {
         'side',
         'high'
     );
-});
-
+}
 
 
 function render_visibilidad_campos_box($post) {
-    $campos = get_option('campos_visibilidad_proyecto', []);
-	
-	?>
-    <p>
-        <label>
-            <input type="checkbox" id="marcar-todos" /> Marcar todos
-        </label>
-    </p>
-    <?php
+    $campos = get_option('campos_visibilidad_proyecto', array());
+	$url_editar = admin_url('admin.php?page=campos-visibilidad');
+
+
+?>
+
+<p>
+<label>
+<input type="checkbox" id="marcar-todos"/>Marcar Todos
+</label>
+</p>
+
+ <div id="contenedor-campos-visibilidad" style="max-height: 250px; overflow-y: auto; border: 1px solid #ccc; padding: 5px; background: #fff;">
+<?php
 
     foreach ($campos as $clave => $etiqueta) {
         $valor = get_post_meta($post->ID, "_mostrar_$clave", true);
-        $checked = ($valor === '1') ? 'checked' : ''; // solo marcar si meta es '1'
+        $checked = ($valor === '1') ? 'checked="checked"' : '';
 
         echo '<p><label>';
         echo '<input class="checkbox-individual" type="checkbox" name="mostrar_' . esc_attr($clave) . '" value="1" ' . $checked . '> ';
         echo esc_html($etiqueta);
         echo '</label></p>';
     }
-	
+
 	?>
+</div>
+
+
+<p style="text-align: right; margin-top: 10px;">
+        <a href="<?php echo esc_url($url_editar); ?>" class="button button-secondary" target="_blank">Editar</a>
+    </p>
+
+
     <script>
         jQuery(document).ready(function($){
             $('#marcar-todos').on('change', function(){
@@ -1663,86 +1390,271 @@ function render_visibilidad_campos_box($post) {
         });
     </script>
     <?php
+
+}
+
+
+// Guardar metabox
+add_action('save_post', 'guardar_campos_visibilidad_post');
+add_action('save_post_proyecto_prioritario', 'guardar_campos_visibilidad_post');
+function guardar_campos_visibilidad_post($post_id) {
+
+
+
+
+
+    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
+
+	if (!current_user_can('edit_post', $post_id)) return;
+
+    $campos = get_option('campos_visibilidad_proyecto', array());
+
+    foreach ($campos as $clave => $etiqueta) {
+        $meta_key = "_mostrar_$clave";
+
+        if (isset($_POST["mostrar_$clave"])) {
+            update_post_meta($post_id, $meta_key, '1');
+        } else {
+            update_post_meta($post_id, $meta_key, '0');
+        }
+    }
+}
+
+
+// se crea pagina Exporta Poryectos Prioritarios y se agrega al menu del admin de wordpress
+/*add_action('admin_menu', 'pagina_exportar_proyectos_csv'); 
+
+function pagina_exportar_proyectos_csv() {
+    add_menu_page(
+    'Exportar Proyectos',               // Título de la página (aparece en la parte superior de la página)
+    'Exportar Proyectos Prioritarios',  // Título del menú (lo que ves en el menú lateral)
+    'manage_options',                   // solo admin puede verla
+    'exportar-proyectos-csv',          // Slug del menú (se usa como identificador)
+    'mostrar_pagina_exportacion',      // Función que muestra el contenido de la página
+    'dashicons-download',              // Icono del menú (de la librería Dashicons)
+    20                                  // Posición en el menú
+    );
+}*/
+
+
+// se crea el boton para exportar los datos y se manda a llamar admin-post para procesar la peticios de creacion del CSV(si no se manda, la pagina se cae)
+/*function mostrar_pagina_exportacion() {
+    ?>
+    <div class="wrap">
+        <h1>Exportar Proyectos Prioritarios</h1>
+        <p>Haz clic en el botón para descargar los proyectos prioritarios en formato CSV.</p>
+        <form method="post" action="<?php echo admin_url('admin-post.php'); ?>">
+            <input type="hidden" name="action" value="exportar_proyectos_csv">
+            <?php submit_button('Exportar a CSV', 'primary'); ?>
+        </form>
+    </div>
+    <?php
+}*/
+
+
+//creacion del hook
+add_action('restrict_manage_posts', 'boton_exportar_proyectos_prioritarios');
+function boton_exportar_proyectos_prioritarios($post_type) {
+    if ($post_type === 'proyecto_prioritario') {
+        $url = admin_url('admin-post.php?action=exportar_proyectos_csv');
+        echo '<a href="' . esc_url($url) . '" class="button button-primary" style="margin-left:10px;">Exportar a CSV</a>';
+    }
 }
 
 
 
-add_action('save_post_proyecto_prioritario', function($post_id) {
-    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
-    if (!current_user_can('edit_post', $post_id)) return;
 
-    $campos = get_option('campos_visibilidad_proyecto', []);
-    
-    foreach ($campos as $clave => $etiqueta) {
-        $meta_key = "_mostrar_$clave";
-        
-        if (isset($_POST["mostrar_$clave"])) {
-            update_post_meta($post_id, $meta_key, '1');
-        } else {
-            update_post_meta($post_id, $meta_key, '0');  // guardar 0 en vez de eliminar
+add_action('admin_post_exportar_proyectos_csv', 'exportar_proyectos_csv');
+
+function exportar_proyectos_csv() {
+    if (!current_user_can('manage_options')) {
+        wp_die('No tienes permisos suficientes para exportar.');
+    }
+
+    nocache_headers();
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename=proyectos_publicados.csv');
+    header('Pragma: no-cache');
+    header('Expires: 0');
+
+    $output = fopen('php://output', 'w');
+
+    // codificación UTF-8 BOM
+    fwrite($output, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+    $proyectos = get_posts(array(
+        'post_type' => 'proyecto_prioritario',
+        'post_status' => 'any',
+        'posts_per_page' => -1
+    ));
+
+    if (empty($proyectos)) {
+        fputcsv($output, array('No hay proyectos publicados'));
+        fclose($output);
+        exit;
+    }
+
+    // Preparar encabezados dinámicos con soporte para subcampos de repeaters
+    $meta_keys = [];
+    $subcampos_repeaters = [];
+
+    foreach ($proyectos as $p) {
+        $metas = get_post_meta($p->ID);
+       // detectar repeaters
+foreach ($metas as $key => $value) {
+    if ($key[0] === '_') continue;
+
+    $val = maybe_unserialize($value[0]);
+
+    // PHP 5.4 no tiene array_key_first(), así que hacemos esto:
+    $primer_indice = null;
+    if (is_array($val)) {
+        foreach ($val as $k => $v) {
+            $primer_indice = $k;
+            break;
         }
     }
-});
 
-
-/*add_action('save_post_proyecto_prioritario', function($post_id) {
-    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
-    if (!current_user_can('edit_post', $post_id)) return;
-
-    $campos = get_option('campos_visibilidad_proyecto', []);
-    
-    foreach ($campos as $clave => $etiqueta) {
-        $meta_key_visibilidad = "_mostrar_$clave";
-        $meta_key_dato = $clave; // se asume que el campo original se guarda con esta clave
-
-        if (isset($_POST["mostrar_$clave"])) {
-            update_post_meta($post_id, $meta_key_visibilidad, '1');
-        } else {
-            update_post_meta($post_id, $meta_key_visibilidad, '0');
-
-            // Vaciar el valor del campo relacionado
-            delete_post_meta($post_id, $meta_key_dato);
+    if (is_array($val) && is_numeric($primer_indice)) {
+        // Es probable que sea un repeater
+        foreach ($val as $fila) {
+            if (is_array($fila)) {
+                foreach ($fila as $subkey => $subval) {
+                    $full_key = $key . '_' . $subkey;
+                    if (!in_array($full_key, $meta_keys)) {
+                        $meta_keys[] = $full_key;
+                        $subcampos_repeaters[$full_key] = array($key, $subkey);
+                    }
+                }
+            }
+        }
+    } else {
+        if (!in_array($key, $meta_keys)) {
+            $meta_keys[] = $key;
         }
     }
-});*/
+}
 
+    }
+
+// 🔴 Eliminar columnas no deseadas del CSV
+$meta_keys = array_diff($meta_keys, ['id_unico_proyecto', 'id_unico_proyecto_base','compras_mx_proyecto','mia_por_proyecto','registros_ui_por_proyecto','otras_ligas_por_proyecto','plan_pertenece','ejes_objeticos_y_estrategias','dato_por_fuente']);
+
+    // Encabezado
+    $header = array_merge(['ID Único Proyecto', 'Proyecto | Iniciativa'], $meta_keys);
+    fputcsv($output, $header);
+
+    foreach ($proyectos as $proyecto) {
+        $row = [
+            //$proyecto->ID,
+		 //get_post_meta($proyecto->ID, 'id_unico_proyecto', true),
+"\t" . get_post_meta($proyecto->ID, 'id_unico_proyecto', true),            
+get_the_title($proyecto->ID),
+        ];
+
+        foreach ($meta_keys as $key) {
+            if (isset($subcampos_repeaters[$key])) {
+                list($parent_key, $subkey) = $subcampos_repeaters[$key];
+                $val = get_post_meta($proyecto->ID, $parent_key, true);
+
+                $val = maybe_unserialize($val);
+                $valores = [];
+
+                if (is_array($val)) {
+                    foreach ($val as $fila) {
+                        if (isset($fila[$subkey])) {
+                            // Aquí usamos convertir_valor_para_csv para manejar subarrays o limpieza
+                            $valores[] = convertir_valor_para_csv($fila[$subkey]);
+                        }
+                    }
+                }
+
+                // Unimos con salto de línea para mejor lectura en Excel (multi-línea en celda)
+                $row[] = implode("\n", $valores);
+            } else {
+                $val = get_post_meta($proyecto->ID, $key, true);
+                $row[] = convertir_valor_para_csv($val);
+            }
+        }
+
+        fputcsv($output, $row);
+    }
+
+    fclose($output);
+    exit;
+}
+
+
+// funcion para limpiar campos y manejar arrays anidados (repeater también)
+function convertir_valor_para_csv($val) {
+    if (is_array($val)) {
+        // Si es un array de arrays (repeater o similar)
+        if (isset($val[0]) && is_array($val[0])) {
+            $filas = [];
+            foreach ($val as $fila) {
+                $subcampos = [];
+                foreach ($fila as $subkey => $subval) {
+                    $subcampos[] = $subkey . ': ' . convertir_valor_para_csv($subval);
+                }
+                $filas[] = implode(' | ', $subcampos);
+            }
+            return implode("\n", $filas);
+        } else {
+            // Array simple
+            return implode(', ', array_map('convertir_valor_para_csv', $val));
+        }
+    }
+
+    if (is_numeric($val) && get_post_status($val)) {
+        $post = get_post($val);
+        return $post ? $post->post_title : $val;
+    }
+
+    if (is_string($val)) {
+        $val = wp_strip_all_tags($val);
+        return trim(preg_replace('/\s+/', ' ', $val));
+    }
+
+    return $val;
+}
+
+
+/*add_action('restrict_manage_posts', 'boton_exportar_proyectos_prioritarios');
+function boton_exportar_proyectos_prioritarios($post_type) {
+    if ($post_type === 'proyecto_prioritario') {
+        $url = admin_url('admin-post.php?action=exportar_proyectos_prioritarios');
+        echo '<a href="' . esc_url($url) . '" class="button button-primary" style="margin-left:10px;">Exportar a CSV</a>';
+    }
+}*/
 
 
 // Forzar ID único al guardar proyecto_prioritario
 add_action('acf/save_post', 'forzar_id_unico_proyecto_final', 20);
+
+
 function forzar_id_unico_proyecto_final($post_id) {
     if (get_post_type($post_id) !== 'proyecto_prioritario') return;
 
-    // Obtener sector y subsector actuales
-    $sector = wp_get_post_terms($post_id, 'sector_proyecto_p', ['fields' => 'ids']);
-    $subsector = wp_get_post_terms($post_id, 'subsector_proyecto_p', ['fields' => 'ids']);
+    // Obtener los códigos directamente de los campos ACF
+    $id_sector = get_field('sector_proyecto', $post_id) ?: '00';
+    $id_subsector = get_field('subsector_proyecto', $post_id) ?: '00';
 
-    $id_sector = (!empty($sector)) ? get_field('codigo_id', 'sector_proyecto_p_' . $sector[0]) ?: '00' : '00';
-    $id_subsector = (!empty($subsector)) ? get_field('codigo_id', 'subsector_proyecto_p_' . $subsector[0]) ?: '00' : '00';
+    $codigo_sector = str_pad((string) get_field('id_sector', $id_sector), 2, '0', STR_PAD_LEFT);
+    $codigo_subsector = str_pad((string) get_field('id_subsector', $id_subsector), 2, '0', STR_PAD_LEFT);
 
-    $base_id_actual = $id_sector . $id_subsector;
+    $base_id_actual = $codigo_sector . $codigo_subsector;
 
-    // Obtener el base guardado previamente para comparar (solo sector+subsector)
-    $base_id_guardado = get_post_meta($post_id, 'id_unico_proyecto_base', true);
-    $id_unico_actual = get_post_meta($post_id, 'id_unico_proyecto', true);
-
-    // Si el ID ya existe y base no cambió, no actualizar nada
-    if (!empty($id_unico_actual) && $base_id_guardado === $base_id_actual) {
-        return; // nada que hacer
-    }
-
-    // Si llegamos aquí, o es nuevo, o cambió sector/subsector: generar nuevo ID
-
-    // Obtener proyectos que ya tienen IDs con este sector+subsector
+    // Obtener TODOS los proyectos para encontrar el consecutivo global máximo, excluyendo el actual
     $proyectos = get_posts([
         'post_type' => 'proyecto_prioritario',
         'posts_per_page' => -1,
-        'post_status' => ['publish', 'draft', 'pending', 'private', 'future'], // TODOS los estados relevantes
+        //'post_status' => ['publish', 'draft', 'pending', 'private', 'future'],
+		'post_status' => ['publish'],
+        'post__not_in' => [$post_id],
         'meta_query' => [
             [
                 'key' => 'id_unico_proyecto',
-                'value' => '^' . $base_id_actual,
-                'compare' => 'REGEXP'
+                'compare' => 'EXISTS'
             ]
         ]
     ]);
@@ -1750,102 +1662,80 @@ function forzar_id_unico_proyecto_final($post_id) {
     $max_consecutivo = 0;
     foreach ($proyectos as $p) {
         $id = get_post_meta($p->ID, 'id_unico_proyecto', true);
-        if (preg_match('/^' . $base_id_actual . '(\d{4})01$/', $id, $match)) {
+        if (preg_match('/^[0-9]{4}(\d{3})01$/', $id, $match)) {
             $num = intval($match[1]);
             if ($num > $max_consecutivo) $max_consecutivo = $num;
         }
     }
 
-    $nuevo_consecutivo = str_pad($max_consecutivo + 1, 4, '0', STR_PAD_LEFT);
-    $id_generado = $base_id_actual . $nuevo_consecutivo . '01';
+    $consecutivo_nuevo = str_pad($max_consecutivo + 1, 3, '0', STR_PAD_LEFT);
+    $id_generado = $base_id_actual . $consecutivo_nuevo . '01';
 
     // Guardar ID único
     update_post_meta($post_id, 'id_unico_proyecto', $id_generado);
-    // Guardar la base para futuras comparaciones
     update_post_meta($post_id, 'id_unico_proyecto_base', $base_id_actual);
 }
 
 
 
-// Mostrar ID en el listado del admin
+
+// Mostrar ID único en el listado del admin
 add_filter('manage_proyecto_prioritario_posts_columns', function($columns) {
     $columns['id_unico_proyecto'] = 'ID Único Proyecto';
     return $columns;
 });
+
 add_action('manage_proyecto_prioritario_posts_custom_column', function($column, $post_id) {
     if ($column === 'id_unico_proyecto') {
-        echo esc_html(get_post_meta($post_id, 'id_unico_proyecto', true));
+        $id = get_post_meta($post_id, 'id_unico_proyecto', true);
+        echo $id ? esc_html($id) : '<em style="color:#888;">Sin ID</em>';
     }
 }, 10, 2);
 
-// Pasar códigos a JavaScript
-add_action('admin_footer-post.php', 'pasar_codigos_a_js');
-add_action('admin_footer-post-new.php', 'pasar_codigos_a_js');
-function pasar_codigos_a_js() {
+
+
+// Pasar códigos (id_sector e id_subsector) a JavaScript desde ACF, para el post actual
+add_action('admin_footer-post.php', 'pasar_codigos_acf_a_js');
+add_action('admin_footer-post-new.php', 'pasar_codigos_acf_a_js');
+function pasar_codigos_acf_a_js() {
     global $post;
     if (!$post || get_post_type($post) !== 'proyecto_prioritario') return;
 
-    $sectores = get_terms('sector_proyecto_p', ['hide_empty' => false]);
-    $subsectores = get_terms('subsector_proyecto_p', ['hide_empty' => false]);
+    // Obtener valores actuales de id_sector e id_subsector (códigos)
+    $codigo_sector = get_field('id_sector', $post->ID) ?: '00';
+    $codigo_subsector = get_field('id_subsector', $post->ID) ?: '00';
 
-    $sector_map = [];
-    foreach ($sectores as $s) {
-        $codigo = get_field('codigo_id', 'sector_proyecto_p_' . $s->term_id) ?: '00';
-        $sector_map[$s->term_id] = $codigo;
-    }
-    $subsector_map = [];
-    foreach ($subsectores as $s) {
-        $codigo = get_field('codigo_id', 'subsector_proyecto_p_' . $s->term_id) ?: '00';
-        $subsector_map[$s->term_id] = $codigo;
-    }
     ?>
     <script>
-    window.codigoSector = <?php echo json_encode($sector_map); ?>;
-    window.codigoSubsector = <?php echo json_encode($subsector_map); ?>;
+    window.codigoSector = "<?php echo esc_js($codigo_sector); ?>";
+    window.codigoSubsector = "<?php echo esc_js($codigo_subsector); ?>";
     </script>
     <?php
 }
 
-// Mostrar ID sugerido en vivo
-add_action('acf/input/admin_footer', 'actualizar_id_en_vivo');
-function actualizar_id_en_vivo() {
+// Mostrar ID sugerido en vivo basado en campos ACF id_sector e id_subsector
+add_action('acf/input/admin_footer', 'actualizar_id_en_vivo_acf');
+function actualizar_id_en_vivo_acf() {
     global $post;
     if (!$post || get_post_type($post) !== 'proyecto_prioritario') return;
 
-    $sectores = get_terms(['taxonomy' => 'sector_proyecto_p', 'hide_empty' => false]);
-    $subsectores = get_terms(['taxonomy' => 'subsector_proyecto_p', 'hide_empty' => false]);
-
-    $codigo_sector = [];
-    $codigo_subsector = [];
-
-    foreach ($sectores as $s) {
-        $codigo_sector[$s->term_id] = get_field('codigo_id', 'term_' . $s->term_id) ?: '00';
-    }
-    foreach ($subsectores as $s) {
-        $codigo_subsector[$s->term_id] = get_field('codigo_id', 'term_' . $s->term_id) ?: '00';
-    }
-
-    echo '<div id="id-unico-generado" class="acf-field"><p><strong>ID sugerido:</strong> <span>Esperando selección...</span></p></div>';
+    echo '<div id="id-unico-generado" class="acf-field"><p><strong>ID sugerido:</strong> <span>Esperando selección válida...</span></p></div>';
     ?>
     <script>
-    window.codigoSector = <?php echo json_encode($codigo_sector); ?>;
-    window.codigoSubsector = <?php echo json_encode($codigo_subsector); ?>;
     (function($){
         function actualizarID() {
-            var sectorIDs = $('select[name="tax_input[sector_proyecto_p][]"]').val() || [];
-            var subsectorIDs = $('select[name="tax_input[subsector_proyecto_p][]"]').val() || [];
-            var sectorID = sectorIDs.length ? sectorIDs[0] : null;
-            var subsectorID = subsectorIDs.length ? subsectorIDs[0] : null;
-            var codigoSector = (sectorID && window.codigoSector[sectorID]) ? window.codigoSector[sectorID] : '00';
-            var codigoSubsector = (subsectorID && window.codigoSubsector[subsectorID]) ? window.codigoSubsector[subsectorID] : '00';
-            var base = codigoSector + codigoSubsector;
+            // Leer valores de campos ACF id_sector e id_subsector en el DOM
+            var codigoSector = $('[name="acf[id_sector]"]').val() || '00';
+            var codigoSubsector = $('[name="acf[id_subsector]"]').val() || '00';
 
             if (codigoSector === '00' || codigoSubsector === '00') {
                 mostrarID('Esperando selección válida...');
                 return;
             }
 
-            $.post(ajaxurl, { action: 'obtener_consecutivo_id', prefijo: base }, function(res) {
+            var base = codigoSector + codigoSubsector;
+
+            $.post(ajaxurl, { action: 'obtener_consecutivo_id'}, function(res) {
                 let consecutivo = parseInt(res) + 1;
                 let nuevoID = base + ('000' + consecutivo).slice(-4) + '01';
                 mostrarID(nuevoID);
@@ -1858,23 +1748,24 @@ function actualizar_id_en_vivo() {
             let contenedor = $('#id-unico-generado');
             if (!contenedor.length) {
                 contenedor = $('<div id="id-unico-generado" class="acf-field"><p><strong>ID sugerido:</strong> <span></span></p></div>');
-                $('.acf-field-taxonomy[data-name="subsector_proyecto_p"]').after(contenedor);
+                $('.acf-field[data-name="id_subsector"]').after(contenedor);
             }
             contenedor.find('span').text(idTexto);
         }
 
         $(document).ready(function(){
             actualizarID();
-            $('select[name="tax_input[sector_proyecto_p][]"], select[name="tax_input[subsector_proyecto_p][]"]').on('change', actualizarID);
+            // Actualizar ID cuando cambian los campos id_sector o id_subsector
+            $('[name="acf[id_sector]"], [name="acf[id_subsector]"]').on('change input', actualizarID);
         });
     })(jQuery);
     </script>
     <?php
 }
 
-// AJAX para obtener el mayor consecutivo
-add_action('wp_ajax_obtener_consecutivo_id', 'obtener_consecutivo_id');
-function obtener_consecutivo_id() {
+// AJAX para obtener el mayor consecutivo basado en prefijo (id_sector + id_subsector)
+add_action('wp_ajax_obtener_consecutivo_id', 'obtener_consecutivo_id_acf');
+function obtener_consecutivo_id_acf() {
     $prefijo = sanitize_text_field($_POST['prefijo']);
     $posts = get_posts([
         'post_type' => 'proyecto_prioritario',
@@ -1883,7 +1774,7 @@ function obtener_consecutivo_id() {
         'meta_query' => [
             [
                 'key' => 'id_unico_proyecto',
-                'value' => "^{$prefijo}[0-9]{4}01$",
+                'value' => "^{$prefijo}[0-9]{3}01$",
                 'compare' => 'REGEXP'
             ]
         ]
@@ -1891,8 +1782,8 @@ function obtener_consecutivo_id() {
 
     $numeros = [];
     foreach ($posts as $p) {
-        $id = get_field('id_unico_proyecto', $p->ID);
-        if (preg_match("/^{$prefijo}(\d{4})01$/", $id, $m)) {
+        $id = get_post_meta($p->ID, 'id_unico_proyecto', true);
+        if (preg_match("/^{$prefijo}(\d{3})01$/", $id, $m)) {
             $numeros[] = intval($m[1]);
         }
     }
@@ -1900,129 +1791,31 @@ function obtener_consecutivo_id() {
     wp_die();
 }
 
-//
-/*add_action('admin_menu', 'pagina_exportar_proyectos_csv');
-function pagina_exportar_proyectos_csv() {
-    add_menu_page(
-        'Exportar Proyectos',
-        'Exportar Proyectos Prioritarios',
-        'manage_options',
-        'exportar-proyectos-csv',
-        'mostrar_pagina_exportacion',
-        'dashicons-download',
-        20
-    );
-}*/
 
-
-//creamos el hook - cuando se esté generando la interfaz del listado de entradas en el admin (restrict_manage_posts), ejecuta la función boton_exportar_proyectos_prioritarios()
-// el hook es un mencanismo que nos permite agregar o quitar funcionalidades de worpress sin alterar su nucelo
-add_action('restrict_manage_posts', 'boton_exportar_proyectos_prioritarios'); 
-function boton_exportar_proyectos_prioritarios($post_type) {
-    if ($post_type === 'proyecto_prioritario') {
-        $url = admin_url('admin-post.php?action=exportar_proyectos_csv');
-        echo '<a href="' . esc_url($url) . '" class="button button-primary" style="margin-left:10px;">Exportar a CSV</a>';
-    }
-}
-
-/*function mostrar_pagina_exportacion() {
-    ?>
-    <div class="wrap">
-        <h1>Exportar Proyectos Publicados</h1>
-        <p>Haz clic en el botón para descargar los proyectos publicados en formato CSV.</p>
-        <form method="post" action="<?php echo admin_url('admin-post.php'); ?>">
-            <input type="hidden" name="action" value="exportar_proyectos_csv">
-            <?php submit_button('Exportar a CSV', 'primary'); ?>
-        </form>
-    </div>
-    <?php
-}*/
-
-
-// Función auxiliar para obtener el nombre del término de una taxonomía
-function obtener_termino_nombre($post_id, $taxonomia) {
-    $terminos = wp_get_post_terms($post_id, $taxonomia, array('fields' => 'names'));
-    return isset($terminos[0]) ? $terminos[0] : '';
-}
-
-add_action('admin_post_exportar_proyectos_csv', 'exportar_proyectos_csv');
-function exportar_proyectos_csv() {
-    if (!current_user_can('manage_options')) {
-        wp_die('No tienes permisos suficientes para exportar.');
-    }
-
-    nocache_headers();
-
-    header('Content-Type: text/csv; charset=utf-8');
-    header('Content-Disposition: attachment; filename=proyectos_publicados.csv');
-    header('Pragma: no-cache');
-    header('Expires: 0');
-
-    $output = fopen('php://output', 'w');
-
-    $proyectos = get_posts(array(
+add_action('wp_ajax_obtener_consecutivo_global', 'obtener_consecutivo_global');
+function obtener_consecutivo_global() {
+    $posts = get_posts([
         'post_type' => 'proyecto_prioritario',
+        'posts_per_page' => -1,
         'post_status' => 'publish',
-        'posts_per_page' => -1
-    ));
+        'meta_query' => [
+            [
+                'key' => 'id_unico_proyecto',
+                'compare' => 'EXISTS'
+            ]
+        ]
+    ]);
 
-    if (empty($proyectos)) {
-        fputcsv($output, array('No hay proyectos publicados'));
-        fclose($output);
-        exit;
-    }
-
-    // Obtener todos los meta keys usados en los proyectos para la cabecera
-    $meta_keys = array();
-    foreach ($proyectos as $p) {
-        $metas = get_post_meta($p->ID);
-        foreach ($metas as $key => $value) {
-            if (!in_array($key, $meta_keys) && substr($key, 0, 1) !== '_') { // excluir meta internos de WP que comienzan con _
-                $meta_keys[] = $key;
-            }
+    $numeros = [];
+    foreach ($posts as $p) {
+        $id = get_post_meta($p->ID, 'id_unico_proyecto', true);
+        if (preg_match("/^[0-9]{4}(\d{3})01$/", $id, $m)) {
+            $numeros[] = intval($m[1]);
         }
     }
 
-    // Obtener las taxonomías asociadas al CPT
-    $taxonomias = get_object_taxonomies('proyecto_prioritario', 'names');
-
-    // Construir encabezado dinámico
-    $header = array_merge(
-        array('ID', 'Título'),
-        $meta_keys,
-        $taxonomias
-    );
-    fputcsv($output, $header);
-
-    // Recorrer proyectos y llenar fila
-    foreach ($proyectos as $proyecto) {
-        $row = array(
-            $proyecto->ID,
-            get_the_title($proyecto->ID),
-        );
-
-        // Agregar valores meta (usar solo primer valor si hay varios)
-        foreach ($meta_keys as $key) {
-            $val = get_post_meta($proyecto->ID, $key, true);
-            $row[] = is_array($val) ? implode(', ', $val) : $val;
-        }
-
-        // Agregar valores taxonomía (nombres separados por coma)
-        foreach ($taxonomias as $tax) {
-            $terms = wp_get_post_terms($proyecto->ID, $tax, array('fields' => 'names'));
-            $row[] = !is_wp_error($terms) ? implode(', ', $terms) : '';
-        }
-
-        fputcsv($output, $row);
-    }
-
-    fclose($output);
-    exit;
+    echo !empty($numeros) ? max($numeros) : 0;
+    wp_die();
 }
-
-
-
-
-
 
 
