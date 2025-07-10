@@ -7,7 +7,7 @@
 		$page_id = isset($post->ID) ? $post->ID : 0;
 		$filtros_array = obtener_filtros_por_pagina($page_id);
 		if (!$page_id) {
-			return '<p>No se encontró la página actual.</p>';
+			return '<p>No se encontró la página actual en español.</p>';
 		}
 		if (!$filtros_array) {
 			return '<p>No se encontraron filtros configurados para esta página(ID: ' . $page_id . ').</p>';

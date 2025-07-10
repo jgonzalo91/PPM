@@ -33,7 +33,7 @@ function mostrar_tabla_sector_en() {
             array(
                 'taxonomy' => 'categoria_macroproyecto',
                 'field' => 'term_id',
-                'terms' => array(563,562),
+                'terms' => array(563),
                 'operator' => 'IN',
             )
         ),
@@ -61,7 +61,47 @@ function mostrar_tabla_sector_en() {
 )
         )
     );
+	
+	//Megaproyectos
+		
+		$args_megaproyectos = array(
+    'post_type' => 'proyecto_inversion',
+    'posts_per_page' => -1,
+    'post_status' => 'publish',
+    'fields' => 'ids',
+    'tax_query' => array(
+        array(
+            'taxonomy' => 'categoria_macroproyecto',
+            'field' => 'term_id',
+            'terms' => array(562),
+            'operator' => 'IN',
+        )
+    ),
+    'meta_query' => array(
+        'relation' => 'AND',
+        array(
+            'key' => 'tipo_de_inversion',
+            'value' => array('2259', '2261'),
+            'compare' => 'IN'
+        ),
+        array(
+            'key' => 'sector_proyecto',
+            'value' => $sector_filtro,
+            'compare' => '='
+        ),
+        array(
+            'key' => 'subsector_proyecto',
+            'value' => is_array($subsector_filtro) ? $subsector_filtro : array($subsector_filtro),
+            'compare' => 'IN'
+        )
+    )
+);
+		
+		//megaproyectos
+		
+	
     $query = new WP_Query($args);
+	$megaproyectos_query = new WP_Query($args_megaproyectos);
 	error_log("Proyectos encontrados (EN): " . $query->found_posts);
     if (!$query->have_posts()) {
         return '<p>No hay proyectos en el sector y subsector especificado.</p>';
@@ -231,7 +271,7 @@ if ($idioma_actual === 'en') {
 }*/
 
 //$fila .= '<td><a href="' . esc_url($url_proyecto) . '" target="_blank" class="enlace-proyecto">' . esc_html($nombre_proyecto) . '</a></td>';
-$fila .= '<td><a href="' . esc_url($url_proyecto . '?language=en') . '" target="_blank" class="enlace-proyecto">' . esc_html($nombre_proyecto) . '</a></td>';
+$fila .= '<td><a href="' . esc_url($url_proyecto . '?language=en') . '" target="_blank" class="enlace-proyecto" style="text-decoration: underline !important;">' . esc_html($nombre_proyecto) . '</a></td>';
 error_log("Proyecto tabla ID ingles $post_id_actual: nombre='$nombre_proyecto', url='$url_proyecto'");
 
 
@@ -268,7 +308,7 @@ error_log("Proyecto tabla ID ingles $post_id_actual: nombre='$nombre_proyecto', 
     $output = '';
     if (!$tabla_otras) {
 		error_log("No hay proyectos en etapas otras.");
-        $output .= '<p>No se encontraron proyectos en las etapas ejecución, licitación y preinversión(Nuevos).</p>';
+        //$output .= '<p>No se encontraron proyectos en las etapas ejecución, licitación y preinversión(Nuevos).</p>';
 	
     } else {
 		error_log("Agregando tabla de proyectos nuevas.");
@@ -283,7 +323,7 @@ error_log("Proyecto tabla ID ingles $post_id_actual: nombre='$nombre_proyecto', 
     }
     if (!$tabla_operacion) {
 		  error_log("No hay proyectos en etapa operación.");
-        $output .= '<p>No se encontraron proyectos en la etapa operación.</p>';
+        //$output .= '<p>No se encontraron proyectos en la etapa operación.</p>';
 		
     } else {
 		   error_log("Agregando tabla de proyectos en operación.");
@@ -298,12 +338,14 @@ error_log("Proyecto tabla ID ingles $post_id_actual: nombre='$nombre_proyecto', 
     }
 	
 	// Obtener los megaproyectos explicitos de los filtros (IDs)
-$ids_megaproyectos_extra = isset($filtros_array['megaproyectos']) ? $filtros_array['megaproyectos'] : array();
-error_log('ids_megaproyectos_extra: ' . print_r($ids_megaproyectos_extra, true));
+//$ids_megaproyectos_extra = isset($filtros_array['megaproyectos']) ? $filtros_array['megaproyectos'] : array();
+//error_log('ids_megaproyectos_extra: ' . print_r($ids_megaproyectos_extra, true));
 
+$ids_megaproyectos_extra = $megaproyectos_query->posts;
 if (empty($ids_megaproyectos_extra)) {
-    $output .= '<p>No hay megaproyectos.</p>';
+    //$output .= '<p>No hay megaproyectos en ingles.</p>';
 } else {
+	//$output .= '<p>hay megaproyectos en ingles</p>';
     $output .= '<button class="btn-acordeon" aria-expanded="false">+ Strategic Projects</button>';
     $output .= '<div class="toggle_content invers-color" itemprop="text" style="display:none;">';
     $output .= '<ul>';
@@ -333,7 +375,7 @@ if ($idioma_actual === 'en') {
             $href = add_query_arg('language', 'en', $href);
         }
 
-        $output .= '<li><a href="' . esc_url($href) . '" target="_blank">' . esc_html($title) . '</a></li>';
+        $output .= '<li><a href="' . esc_url($href) . '" target="_blank" style="text-decoration: underline">' . esc_html($title) . '</a></li>';
     }
 }
 
@@ -354,11 +396,11 @@ function obtener_filtros_por_pagina_en($page_id) {
 		
 		// ingles
 		14369 => array('sector' => '1428', 'subsector' => '1443'), // transporte, aeropuertos
-		14395 => array('sector' => '1426', 'subsector' => array('4057', '5360','4088','4118'), 'megaproyectos'  => array('136665')), // agua y medio ambiente
+		14395 => array('sector' => '1426', 'subsector' => array('4057', '5360','4088','4118')), // agua y medio ambiente
 		14382 => array('sector' => '1428', 'subsector' => '4094'), // transporte, movilidad urbana
-		14365 => array('sector' => '1428', 'subsector' => '1454', 'megaproyectos'  => array('134226')), // transporte, carreteras y puentes 134226
-		14410 => array('sector' => '1425' , 'subsector' => array('4086','13720','16559','7392','38509','7685','6931','7391'),'megaproyectos'  => array('138385')), // Electricidad
-		14374 => array('sector' => '1428', 'subsector' => '1445', 'megaproyectos'  => array('129130','128799','129903','128030')), // transportes , ferrocarriles
+		14365 => array('sector' => '1428', 'subsector' => '1454'), // transporte, carreteras y puentes 134226
+		14410 => array('sector' => '1425' , 'subsector' => array('4086','13720','16559','7392','38509','7685','6931','7391')), // Electricidad
+		14374 => array('sector' => '1428', 'subsector' => '1445'), // transportes , ferrocarriles
 		14412 => array('sector' => '4037', 'subsector' => array('4084','4128')), // hidricarburos - 
 		14378 => array('sector' => '1428', 'subsector' => '1444'), //transporte, puertos
 		94795 => array ('sector' => '1426' , 'subsector' => '70363'), // agua y medio ambiente - residuos solidos
@@ -497,4 +539,5 @@ function script_acordeon_tablas_en() {
     <?php
 }
 add_action('wp_footer', 'script_acordeon_tablas_en');
+
 
