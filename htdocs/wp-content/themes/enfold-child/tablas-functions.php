@@ -17,6 +17,9 @@
 		if (!$sector_filtro || !$subsector_filtro) {
 			return '<p>Error: Falta sector o subsector en los filtros.</p>';
 		}
+		
+
+			
 		$args = array(
 			'post_type' => 'proyecto_inversion',
 			'posts_per_page' => -1,
@@ -25,7 +28,7 @@
 				array(
 					'taxonomy' => 'categoria_macroproyecto',
 					'field' => 'term_id',
-					'terms' => array(563,562),
+					'terms' => array(563),
 					'operator' => 'IN',
 				)
 			),
@@ -41,7 +44,6 @@
 					'value' => $sector_filtro,
 					'compare' => '='
 				),
-			
 				array(
 				'key' => 'subsector_proyecto',
 				'value' => is_array($subsector_filtro) ? $subsector_filtro : array($subsector_filtro),
@@ -50,14 +52,52 @@
 			)
 		);
 		
-
+		//Megaproyectos
+		
+		$args_megaproyectos = array(
+    'post_type' => 'proyecto_inversion',
+    'posts_per_page' => -1,
+    'post_status' => 'publish',
+    'fields' => 'ids',
+    'tax_query' => array(
+        array(
+            'taxonomy' => 'categoria_macroproyecto',
+            'field' => 'term_id',
+            'terms' => array(562),
+            'operator' => 'IN',
+        )
+    ),
+    'meta_query' => array(
+        'relation' => 'AND',
+        array(
+            'key' => 'tipo_de_inversion',
+            'value' => array('2259', '2261'),
+            'compare' => 'IN'
+        ),
+        array(
+            'key' => 'sector_proyecto',
+            'value' => $sector_filtro,
+            'compare' => '='
+        ),
+        array(
+            'key' => 'subsector_proyecto',
+            'value' => is_array($subsector_filtro) ? $subsector_filtro : array($subsector_filtro),
+            'compare' => 'IN'
+        )
+    )
+);
+		
+		//megaproyectos
+		
 		$query = new WP_Query($args);
+		$megaproyectos_query = new WP_Query($args_megaproyectos);
 		
 		if (!$query->have_posts()) {
 			return '<p>No hay proyectos en el sector y subsector especificado.</p>';
+			
 		}
 		
-
+		
 		
 		// aqui es donde se agregan los sectores.
 		$tabla_operacion = '';
@@ -87,7 +127,7 @@
 			$redes = $conOb->query("SELECT * FROM tbl_procura WHERE id_proyecto = " . intval($post_id));
 			$r_ = ($redes && $redes->num_rows > 0) ? "Si" : "No";
 			$fila = '<tr>';
-			$fila .= '<td><a href="' . get_permalink() . '" target="_blank" class="enlace-proyecto">' . get_the_title() . '</a></td>';
+			$fila .= '<td><a href="' . get_permalink() . '" target="_blank" class="enlace-proyecto" style="text-decoration: underline !important;">' . get_the_title() . '</a></td>';
 			$fila .= '<td>' . esc_html($sector) . '</td>';
 			$fila .= '<td>' . esc_html($subsector) . '</td>';
 			$fila .= '<td>' . esc_html($etapa) . '</td>';
@@ -105,7 +145,7 @@
 		wp_reset_query();
 		$output = '';
 		if (!$tabla_otras) {
-			$output .= '<p>No se encontraron proyectos en las etapas Ejecución, Licitación y Preinversión(Nuevos).</p>';
+			//$output .= '<p>No se encontraron proyectos en las etapas Ejecución, Licitación y Preinversión(Nuevos).</p>';
 		} else {
 	
 			$output .= '<button class="btn-acordeon" aria-expanded="false">+ Proyectos Nuevos</button>';
@@ -117,7 +157,7 @@
 			$output .= '</div>';
 		}
 		if (!$tabla_operacion) {
-			$output .= '<p>No se encontraron proyectos en la etapa Operación.</p>';
+			//$output .= '<p>No se encontraron proyectos en la etapa Operación.</p>';
 		} else {
 		
 			$output .= '<button class="btn-acordeon" aria-expanded="false">+ Proyectos en Operación</button>';
@@ -130,11 +170,28 @@
 		}
 
 // Obtener los megaproyect de los filtros (IDs)
-$ids_megaproyectos_extra = isset($filtros_array['megaproyectos']) ? $filtros_array['megaproyectos'] : array();
+//bien $ids_megaproyectos_extra = isset($filtros_array['megaproyectos']) ? $filtros_array['megaproyectos'] : array();
+
+
+// Obtener megaproyectos desde ACF (manual)
+/*$repetidor = get_field('proyectos_por_pagina', $page_id);
+$ids_megaproyectos_extra = array();
+
+if ($repetidor && is_array($repetidor)) {
+    foreach ($repetidor as $fila) {
+        if (isset($fila['megaproyecto']) && is_object($fila['megaproyecto'])) {
+            $ids_megaproyectos_extra[] = $fila['megaproyecto']->ID;
+        }
+    }
+}*/
+//$ids_megaproyectos_extra = $megaproyectos_query->posts;
+$ids_megaproyectos_extra = $megaproyectos_query->posts;
 
 if (empty($ids_megaproyectos_extra)) {
-    $output .= '<p>No hay megaproyectos.</p>';
+    //$output .= '<p>No hay megaproyectos.</p>';
 } else {
+	
+	//$output .= '<p>Hay Megaproyectos.</p>';
     $output .= '<button class="btn-acordeon" aria-expanded="false">+ Proyectos Estratégicos</button>';
     $output .= '<div class="toggle_content invers-color" itemprop="text" style="display:none;">';
     $output .= '<ul>';
@@ -144,7 +201,14 @@ if (empty($ids_megaproyectos_extra)) {
         if ($post_mega && $post_mega->post_status === 'publish') {
             $href = get_permalink($mega_id);
             $title = get_the_title($mega_id);
-     $output .= "<li><a href=\"$href\" target=\"_blank\">$title</a></li>";
+    
+
+
+	
+	$output .= "<li><a href=\"$href\" target=\"_blank\" style=\"text-decoration: underline !important;\">$title</a></li>";
+
+
+
 
         }
     }
@@ -164,18 +228,16 @@ if (empty($ids_megaproyectos_extra)) {
 			88706 => array('sector' => '1428', 'subsector' => '1443'),
 			9377 => array('sector' => '1428', 'subsector' => '1444'), 
 			9383 => array('sector' => '1423', 'subsector' => '12271'), 
-			9367 => array('sector' => '1426', 'subsector' => array('4057', '5360','4088','4118'), 'megaproyectos'  => array('136665')), 
-			9354 => array('sector' => '1428', 'subsector' => '1454', 'megaproyectos'  => array('134226')), 
-			9357 => array('sector' => '1425' , 'subsector' => array('4086','13720','16559','7392','38509','7685','6931','7391'),'megaproyectos'  => array('138385')), 
-			9363 => array('sector' => '1428', 'subsector' => '1445', 'megaproyectos'  => array('129130','128799','129903','128030')), 
+			9367 => array('sector' => '1426', 'subsector' => array('4057', '5360','4088','4118')), 
+			9354 => array('sector' => '1428', 'subsector' => '1454'), 
+			9357 => array('sector' => '1425' , 'subsector' => array('4086','13720','16559','7392','38509','7685','6931','7391')), 
+			9363 => array('sector' => '1428', 'subsector' => '1445'), 
 			9370 => array('sector' => '4037', 'subsector' => array('4084','4128')),
 			94774 => array ('sector' => '1426' , 'subsector' => '70363'), 
-
-			
-
 		);
 		return isset($filtropag[$page_id]) ? $filtropag[$page_id] : false;
 	}
+	
 	function estilo_tablas_etapas() {
 		echo '<style>
 			.tabla-scroll {
@@ -259,5 +321,3 @@ if (empty($ids_megaproyectos_extra)) {
 		<?php
 	}
 	add_action('wp_footer', 'script_acordeon_tablas');
-
-
