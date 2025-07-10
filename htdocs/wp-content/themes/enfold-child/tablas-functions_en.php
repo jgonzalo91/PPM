@@ -14,7 +14,7 @@ function mostrar_tabla_sector_en() {
     error_log("Filtros encontrados (EN): " . print_r($filtros_array, true));
 	
     if (!$page_id) {
-        return '<p>No se encontró la página actual en ingles.</p>';
+        return '<p>No se encontró la página actual.</p>';
     }
 	
     if (!$filtros_array) {
@@ -347,7 +347,8 @@ if (empty($ids_megaproyectos_extra)) {
 } else {
 	//$output .= '<p>hay megaproyectos en ingles</p>';
     $output .= '<button class="btn-acordeon" aria-expanded="false">+ Strategic Projects</button>';
-    $output .= '<div class="toggle_content invers-color" itemprop="text" style="display:none;">';
+    //$output .= '<div class="toggle_content invers-color" itemprop="text" style="display:none;">';
+$output .= '<div class="toggle_content invers-color" itemprop="text" style="display:none; background-color: #3b3e40;">';
     $output .= '<ul>';
 
    foreach ($ids_megaproyectos_extra as $mega_id) {
@@ -375,7 +376,19 @@ if ($idioma_actual === 'en') {
             $href = add_query_arg('language', 'en', $href);
         }
 
-        $output .= '<li><a href="' . esc_url($href) . '" target="_blank" style="text-decoration: underline">' . esc_html($title) . '</a></li>';
+        //$output .= '<li><a href="' . esc_url($href) . '" target="_blank" style="text-decoration: underline">' . esc_html($title) . '</a></li>';
+
+$output .= '<li style="list-style: disc; list-style-position: inside; color: #ccc;">
+				<a href="' . esc_url($href) . '" target="_blank" style="text-decoration: underline !important; color:#8bfbff !important;">' . esc_html($title) . 
+'</a>
+				</li>';
+
+
+
+
+
+
+
     }
 }
 
