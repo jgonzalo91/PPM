@@ -14,7 +14,7 @@ function mostrar_tabla_sector_en() {
     error_log("Filtros encontrados (EN): " . print_r($filtros_array, true));
 	
     if (!$page_id) {
-        return '<p>No se encontró la página actual.</p>';
+        return '<p>No se encontró la página actual en ingles.</p>';
     }
 	
     if (!$filtros_array) {
