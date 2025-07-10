@@ -7,7 +7,7 @@
 		$page_id = isset($post->ID) ? $post->ID : 0;
 		$filtros_array = obtener_filtros_por_pagina($page_id);
 		if (!$page_id) {
-			return '<p>No se encontró la página actual en español.</p>';
+			return '<p>No se encontró la página actual.</p>';
 		}
 		if (!$filtros_array) {
 			return '<p>No se encontraron filtros configurados para esta página(ID: ' . $page_id . ').</p>';
@@ -193,7 +193,8 @@ if (empty($ids_megaproyectos_extra)) {
 	
 	//$output .= '<p>Hay Megaproyectos.</p>';
     $output .= '<button class="btn-acordeon" aria-expanded="false">+ Proyectos Estratégicos</button>';
-    $output .= '<div class="toggle_content invers-color" itemprop="text" style="display:none;">';
+    //$output .= '<div class="toggle_content invers-color" itemprop="text" style="display:none;">';
+$output .= '<div class="toggle_content invers-color" itemprop="text" style="display:none; background-color: #3b3e40;">';
     $output .= '<ul>';
 
     foreach ($ids_megaproyectos_extra as $mega_id) {
@@ -205,7 +206,12 @@ if (empty($ids_megaproyectos_extra)) {
 
 
 	
-	$output .= "<li><a href=\"$href\" target=\"_blank\" style=\"text-decoration: underline !important;\">$title</a></li>";
+	//$output .= "<li><a href=\"$href\" target=\"_blank\" style=\"text-decoration: underline !important;\">$title</a></li>";
+	$output .= '<li style="list-style: disc; list-style-position: inside; color: #ccc;">
+				<a href="' . esc_url($href) . '" target="_blank" style="text-decoration: underline !important; color:#8bfbff !important;">' . esc_html($title) . 
+'</a>
+				</li>';
+
 
 
 
