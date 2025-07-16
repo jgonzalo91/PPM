@@ -11,7 +11,7 @@ defined('ABSPATH') or die('¡Sin acceso directo, por favor!');
 
 function mostrar_tabla_sector_idioma($idioma = 'es') {
 	
-	error_log("mostrar_tabla_sector_idioma iniciado con idioma: " . $idioma);
+	error_log("mostrar_tabla_sector_idioma iniciado con el idioma: " . $idioma);
     $conn = new conexion();
     $conOb = $conn->conexionMysql();
 
