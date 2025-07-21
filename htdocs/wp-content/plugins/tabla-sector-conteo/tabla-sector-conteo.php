@@ -8,10 +8,141 @@
 
 defined('ABSPATH') or die('¡Sin acceso directo, por favor!');
 
+// Función que se ejecuta al activar el plugin
+function ocultar_tablas_manuales_activacion() {
+    update_option('tabla_sector_conteo_activo', true);
+}
+register_activation_hook(__FILE__, 'ocultar_tablas_manuales_activacion');
+
+// Función que se ejecuta al desactivar el plugin
+function mostrar_tablas_manuales_desactivacion() {
+    delete_option('tabla_sector_conteo_activo');
+}
+register_deactivation_hook(__FILE__, 'mostrar_tablas_manuales_desactivacion');
+
+// Filtro para ocultar los shortcodes cuando el plugin está desactivado
+function filtrar_contenido_shortcodes($content) {
+    if (!get_option('tabla_sector_conteo_activo')) {
+        // Array de patrones de shortcodes a buscar
+        $shortcodes = array(
+            '/\[tabla_sector_idioma[^\]]*\]/',
+            '/\[conteo_procura_auto[^\]]*\]/'
+        );
+        
+        // Reemplazar cada shortcode con una cadena vacía
+        foreach ($shortcodes as $shortcode) {
+            $content = preg_replace($shortcode, '', $content);
+        }
+    }
+    return $content;
+}
+add_filter('the_content', 'filtrar_contenido_shortcodes', 999);
+add_filter('widget_text_content', 'filtrar_contenido_shortcodes', 999);
+add_filter('widget_text', 'filtrar_contenido_shortcodes', 999);
+add_filter('widget_block_content', 'filtrar_contenido_shortcodes', 999);
+
+// Agregar estilos CSS para ocultar las tablas manuales
+function agregar_estilos_ocultar_tablas() {
+    if (!get_option('tabla_sector_conteo_activo')) {
+        return;
+    }
+
+    // Obtener el ID de la página actual
+    $current_page_id = get_the_ID();
+    if (!$current_page_id) {
+        return;
+    }
+
+    // Detectar el idioma actual usando Polylang si está disponible
+    $idioma = function_exists('pll_current_language') ? pll_current_language() : 'es';
+
+    // Obtener los IDs de páginas según el idioma
+    $paginas_permitidas = array();
+    if ($idioma === 'en') {
+        // IDs de páginas en inglés
+        $paginas_permitidas = array(
+            14369, 14395, 14382, 14365, 14410, 
+            14374, 14412, 14378, 94795, 14390
+        );
+    } else {
+        // IDs de páginas en español
+        $paginas_permitidas = array(
+            9386, 88706, 9377, 9383, 9367, 
+            9354, 9357, 9363, 9370, 94774
+        );
+    }
+
+    // Verificar si la página actual está en la lista de páginas permitidas
+    if (in_array($current_page_id, $paginas_permitidas)) {
+        echo '<style>
+            .togglecontainer.el_after_av_textblock.el_before_av_textblock.enable_toggles {
+                display: none !important;
+            }
+            
+            /* Ocultar el párrafo introductorio y la lista de conteos manuales */
+            .avia_textblock p:contains("pueden consultar sobre el sector"),
+            .avia_textblock p:contains("can consult about the sector"),
+            .avia_textblock ul:has(li:contains("proyectos")),
+            .avia_textblock ul:has(li:contains("empresas")),
+            .avia_textblock ul:has(li:contains("consorcios")),
+            .avia_textblock ul:has(li:contains("Projects")),
+            .avia_textblock ul:has(li:contains("Companies")),
+            .avia_textblock ul:has(li:contains("Consortiums")) {
+                display: none !important;
+            }
+            
+            /* Asegurar que nuestro conteo generado sea visible */
+            .resumen-conteo {
+                display: block !important;
+                margin-top: 20px !important;
+            }
+            .resumen-conteo p {
+                display: block !important;
+                margin-bottom: 10px !important;
+            }
+        </style>
+        <script>
+        jQuery(document).ready(function($) {
+            function ocultarConteosManuales() {
+                // Ocultar la lista que contiene los conteos manuales
+                $(".avia_textblock ul").each(function() {
+                    var $ul = $(this);
+                    var contieneConteos = false;
+                    
+                    // Verificar si la lista contiene elementos de conteo
+                    $ul.find("li").each(function() {
+                        var texto = $(this).text().trim();
+                        if (texto.match(/\d+\s*(proyectos|empresas|consorcios|Projects|Companies|Consortiums)/i)) {
+                            contieneConteos = true;
+                            return false; // Salir del bucle each
+                        }
+                    });
+                    
+                    if (contieneConteos) {
+                        // Ocultar la lista y el párrafo introductorio anterior
+                        $ul.prev("p").hide();
+                        $ul.hide();
+                    }
+                });
+            }
+            
+            // Ejecutar cuando el documento esté listo
+            ocultarConteosManuales();
+            
+            // Ejecutar después de cualquier actualización de AJAX
+            $(document).ajaxComplete(function() {
+                ocultarConteosManuales();
+            });
+        });
+        </script>';
+    }
+}
+add_action('wp_head', 'agregar_estilos_ocultar_tablas', 999);
+
 
 function mostrar_tabla_sector_idioma($idioma = 'es') {
 	
-	error_log("mostrar_tabla_sector_idioma iniciado con el idioma: " . $idioma);
+	error_log("mostrar_tabla_sector_idioma iniciado con idioma: " . $idioma);
     $conn = new conexion();
     $conOb = $conn->conexionMysql();
 
@@ -398,7 +529,8 @@ add_action('wp_head', 'estilo_tablas_etapas');
     }
     if (!$filtros_array) {
         return '<p>' . ($idioma === 'en'
-            ? 'No filters found for this page (ID: ' . $page_id . ').' : 'No se encontraron filtros configurados para esta página (ID: ' . $page_id . ').') . '</p>';
+            ? 'No filters found for this page (ID: ' . $page_id . ').' 
+            : 'No se encontraron filtros configurados para esta página (ID: ' . $page_id . ').') . '</p>';
     }
 
     $sector = isset($filtros_array['sector']) ? intval($filtros_array['sector']) : 0;
@@ -408,33 +540,19 @@ add_action('wp_head', 'estilo_tablas_etapas');
     $total_proyectos = 0;
     $total_empresas = 0;
     $total_consorcios = 0;
-	
-	error_log("🧪 Evaluando condiciones de filtros:");
-error_log("➡️ Sector: " . var_export($sector, true));
-error_log("➡️ Subsector: " . var_export($subsector, true));
-
-if (!empty($sector) && empty($subsector)) {
-    error_log("✅ Condición: Solo sector (subsector vacío)");
-} elseif (!empty($sector) && !empty($subsector)) {
-    error_log("✅ Condición: Sector y subsector");
-} else {
-    error_log("✅ Condición: Sin sector o sin filtros (nacional)");
-}
 
     if (!empty($sector) && empty($subsector)) {
         // Solo sector
         $sql_conteo = "
             SELECT
               COUNT(DISTINCT id_proyecto) AS total_proyectos,
-              COUNT(DISTINCT id_empresa ) AS total_empresas
+              COUNT(DISTINCT id_empresa) AS total_empresas,
               COUNT(DISTINCT CASE WHEN tipo_participante = 'Consorcio' THEN id_propuesta END) AS total_consorcios
             FROM tbl_procura
             WHERE id_sector = $sector
         ";
-
     } elseif (!empty($sector) && !empty($subsector)) {
         // Sector y subsector (único o múltiple)
-		
         if (is_array($subsector)) {
             $ids = array_map('intval', $subsector);
             $where_subsector = "id_subsector IN (" . implode(",", $ids) . ")";
@@ -450,7 +568,6 @@ if (!empty($sector) && empty($subsector)) {
             FROM tbl_procura
             WHERE $where_subsector
         ";
-
     } else {
         // Nacional o sin filtros
         $sql_conteo = "
@@ -462,15 +579,12 @@ if (!empty($sector) && empty($subsector)) {
         ";
     }
 
-
     $res_conteo = $conOb->query($sql_conteo);
     if ($res_conteo && $res_conteo->num_rows > 0) {
         $row = $res_conteo->fetch_assoc();
-        $total_proyectos = $row['total_proyectos'];
-        $total_empresas = $row['total_empresas'];
-        $total_consorcios = $row['total_consorcios'];
-    } else {
-        $total_proyectos = $total_empresas = $total_consorcios = 0;
+        $total_proyectos = intval($row['total_proyectos']);
+        $total_empresas = intval($row['total_empresas']);
+        $total_consorcios = intval($row['total_consorcios']);
     }
 
     // Textos según idioma
@@ -480,9 +594,18 @@ if (!empty($sector) && empty($subsector)) {
 
     // Salida HTML
     $output = '<div class="resumen-conteo">';
-    $output .= "<p><strong>$texto_proyectos:</strong> " . number_format($total_proyectos) . '</p>';
-    $output .= "<p><strong>$texto_empresas:</strong> " . number_format($total_empresas) . '</p>';
-    $output .= "<p><strong>$texto_consorcios:</strong> " . number_format($total_consorcios) . '</p>';
+    
+    // Solo mostrar los elementos que tengan un conteo mayor a 0
+    if ($total_proyectos > 0) {
+        $output .= "<p><strong>$texto_proyectos:</strong> " . number_format($total_proyectos) . '</p>';
+    }
+    if ($total_empresas > 0) {
+        $output .= "<p><strong>$texto_empresas:</strong> " . number_format($total_empresas) . '</p>';
+    }
+    if ($total_consorcios > 0) {
+        $output .= "<p><strong>$texto_consorcios:</strong> " . number_format($total_consorcios) . '</p>';
+    }
+    
     $output .= '</div>';
 
     return $output;
