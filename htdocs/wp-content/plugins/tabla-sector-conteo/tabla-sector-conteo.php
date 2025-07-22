@@ -140,6 +140,18 @@ function agregar_estilos_ocultar_tablas() {
 add_action('wp_head', 'agregar_estilos_ocultar_tablas', 999);
 
 
+// Función auxiliar para ordenar por número de proyecto
+function ordenar_por_numero_proyecto($a, $b) {
+    // Extraer números del inicio del título
+    preg_match('/^(\d+)/', get_the_title($a), $matches_a);
+    preg_match('/^(\d+)/', get_the_title($b), $matches_b);
+    
+    $num_a = isset($matches_a[1]) ? intval($matches_a[1]) : 0;
+    $num_b = isset($matches_b[1]) ? intval($matches_b[1]) : 0;
+    
+    return $num_a - $num_b;
+}
+
 function mostrar_tabla_sector_idioma($idioma = 'es') {
 	
 	error_log("mostrar_tabla_sector_idioma iniciado con idioma: " . $idioma);
@@ -180,6 +192,10 @@ function mostrar_tabla_sector_idioma($idioma = 'es') {
         'post_type'      => 'proyecto_inversion',
         'posts_per_page' => -1,
         'post_status'    => 'publish',
+        'orderby'        => array(
+            'date'       => 'DESC',
+            'title'      => 'ASC'
+        ),
         'tax_query'      => array(
             array(
                 'taxonomy' => 'categoria_macroproyecto',
@@ -249,6 +265,9 @@ function mostrar_tabla_sector_idioma($idioma = 'es') {
     $tabla_operacion = '';
     $tabla_otras = '';
 
+    $proyectos_operacion = array();
+    $proyectos_otros = array();
+
     while ($query_proyectos->have_posts()) {
         $query_proyectos->the_post();
         $post_id = get_the_ID();
@@ -316,8 +335,70 @@ error_log("sector_id: $sector_id, subsector_id: $subsector_id, etapa_id: $etapa_
         } else {
             $tabla_otras .= $fila;
         }
+
+        // Almacenar los datos del proyecto en arrays separados
+        $proyecto_data = array(
+            'post_id' => $post_id,
+            'titulo' => $obtener_titulo_proyecto($post_id),
+            'sector' => $sector,
+            'subsector' => $subsector,
+            'etapa' => $etapa,
+            'sostenibilidad' => $s,
+            'redes' => $r_,
+            'url' => $url_proyecto
+        );
+        
+        if ($etapa_normalizada === ($idioma === 'en' ? 'operation' : 'operación')) {
+            $proyectos_operacion[] = $proyecto_data;
+        } else {
+            $proyectos_otros[] = $proyecto_data;
+        }
     }
     wp_reset_postdata();
+
+    // Ordenar los arrays por el número del proyecto
+    usort($proyectos_operacion, function($a, $b) {
+        preg_match('/^(\d+)/', $a['titulo'], $matches_a);
+        preg_match('/^(\d+)/', $b['titulo'], $matches_b);
+        $num_a = isset($matches_a[1]) ? intval($matches_a[1]) : 0;
+        $num_b = isset($matches_b[1]) ? intval($matches_b[1]) : 0;
+        return $num_b - $num_a; // Cambiado para orden descendente
+    });
+
+    usort($proyectos_otros, function($a, $b) {
+        preg_match('/^(\d+)/', $a['titulo'], $matches_a);
+        preg_match('/^(\d+)/', $b['titulo'], $matches_b);
+        $num_a = isset($matches_a[1]) ? intval($matches_a[1]) : 0;
+        $num_b = isset($matches_b[1]) ? intval($matches_b[1]) : 0;
+        return $num_b - $num_a; // Cambiado para orden descendente
+    });
+
+    // Generar las tablas HTML
+    $tabla_operacion = '';
+    foreach ($proyectos_operacion as $proyecto) {
+        $fila = '<tr>';
+        $fila .= '<td><a href="' . esc_url($proyecto['url']) . '" target="_blank" class="enlace-proyecto" style="text-decoration: underline !important;">' . esc_html($proyecto['titulo']) . '</a></td>';
+        $fila .= '<td>' . esc_html($proyecto['sector']) . '</td>';
+        $fila .= '<td>' . esc_html($proyecto['subsector']) . '</td>';
+        $fila .= '<td>' . esc_html($proyecto['etapa']) . '</td>';
+        $fila .= '<td class="centrado">' . esc_html($proyecto['sostenibilidad']) . '</td>';
+        $fila .= '<td class="centrado">' . esc_html($proyecto['redes']) . '</td>';
+        $fila .= '</tr>';
+        $tabla_operacion .= $fila;
+    }
+
+    $tabla_otras = '';
+    foreach ($proyectos_otros as $proyecto) {
+        $fila = '<tr>';
+        $fila .= '<td><a href="' . esc_url($proyecto['url']) . '" target="_blank" class="enlace-proyecto" style="text-decoration: underline !important;">' . esc_html($proyecto['titulo']) . '</a></td>';
+        $fila .= '<td>' . esc_html($proyecto['sector']) . '</td>';
+        $fila .= '<td>' . esc_html($proyecto['subsector']) . '</td>';
+        $fila .= '<td>' . esc_html($proyecto['etapa']) . '</td>';
+        $fila .= '<td class="centrado">' . esc_html($proyecto['sostenibilidad']) . '</td>';
+        $fila .= '<td class="centrado">' . esc_html($proyecto['redes']) . '</td>';
+        $fila .= '</tr>';
+        $tabla_otras .= $fila;
+    }
 
     // Construir salida HTML
     $output = '';
