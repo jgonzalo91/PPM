@@ -82,23 +82,29 @@ function agregar_estilos_ocultar_tablas() {
             /* Ocultar el párrafo introductorio y la lista de conteos manuales */
             .avia_textblock p:contains("pueden consultar sobre el sector"),
             .avia_textblock p:contains("can consult about the sector"),
-            .avia_textblock ul:has(li:contains("proyectos")),
-            .avia_textblock ul:has(li:contains("empresas")),
-            .avia_textblock ul:has(li:contains("consorcios")),
-            .avia_textblock ul:has(li:contains("Projects")),
-            .avia_textblock ul:has(li:contains("Companies")),
-            .avia_textblock ul:has(li:contains("Consortiums")) {
+            .avia_textblock ul:not(.conteo-automatico-lista):has(li:contains("proyectos")),
+            .avia_textblock ul:not(.conteo-automatico-lista):has(li:contains("empresas")),
+            .avia_textblock ul:not(.conteo-automatico-lista):has(li:contains("consorcios")),
+            .avia_textblock ul:not(.conteo-automatico-lista):has(li:contains("Projects")),
+            .avia_textblock ul:not(.conteo-automatico-lista):has(li:contains("Companies")),
+            .avia_textblock ul:not(.conteo-automatico-lista):has(li:contains("Consortiums")) {
                 display: none !important;
             }
             
-            /* Asegurar que nuestro conteo generado sea visible */
+            /* Estilos para el conteo automático */
             .resumen-conteo {
                 display: block !important;
                 margin-top: 20px !important;
             }
-            .resumen-conteo p {
+            .resumen-conteo .conteo-automatico-lista {
                 display: block !important;
+                list-style-type: disc !important;
+                padding-left: 20px !important;
+                margin: 0 !important;
+            }
+            .resumen-conteo .conteo-automatico-lista li {
                 margin-bottom: 10px !important;
+                color: black !important;
             }
         </style>
         <script>
@@ -360,17 +366,35 @@ error_log("sector_id: $sector_id, subsector_id: $subsector_id, etapa_id: $etapa_
     usort($proyectos_operacion, function($a, $b) {
         preg_match('/^(\d+)/', $a['titulo'], $matches_a);
         preg_match('/^(\d+)/', $b['titulo'], $matches_b);
-        $num_a = isset($matches_a[1]) ? intval($matches_a[1]) : 0;
-        $num_b = isset($matches_b[1]) ? intval($matches_b[1]) : 0;
-        return $num_b - $num_a; // Cambiado para orden descendente
+        
+        // Si solo uno tiene número, el que NO tiene número va primero
+        if (!isset($matches_a[1]) && isset($matches_b[1])) return -1;
+        if (isset($matches_a[1]) && !isset($matches_b[1])) return 1;
+        
+        // Si ambos tienen número, ordenar por número descendente
+        if (isset($matches_a[1]) && isset($matches_b[1])) {
+            return intval($matches_b[1]) - intval($matches_a[1]);
+        }
+        
+        // Si ninguno tiene número, mantener el orden original
+        return 0;
     });
 
     usort($proyectos_otros, function($a, $b) {
         preg_match('/^(\d+)/', $a['titulo'], $matches_a);
         preg_match('/^(\d+)/', $b['titulo'], $matches_b);
-        $num_a = isset($matches_a[1]) ? intval($matches_a[1]) : 0;
-        $num_b = isset($matches_b[1]) ? intval($matches_b[1]) : 0;
-        return $num_b - $num_a; // Cambiado para orden descendente
+        
+        // Si solo uno tiene número, el que NO tiene número va primero
+        if (!isset($matches_a[1]) && isset($matches_b[1])) return -1;
+        if (isset($matches_a[1]) && !isset($matches_b[1])) return 1;
+        
+        // Si ambos tienen número, ordenar por número descendente
+        if (isset($matches_a[1]) && isset($matches_b[1])) {
+            return intval($matches_b[1]) - intval($matches_a[1]);
+        }
+        
+        // Si ninguno tiene número, mantener el orden original
+        return 0;
     });
 
     // Generar las tablas HTML
@@ -408,51 +432,48 @@ error_log("sector_id: $sector_id, subsector_id: $subsector_id, etapa_id: $etapa_
 
     if (!empty($tabla_otras)) {
         if (!empty($tabla_otras)) {
-    $titulo_otras = $idioma === 'en' ? '+ New Projects' : '+ Proyectos Nuevos';
-    $output .= '<button class="btn-acordeon" aria-expanded="false">' . $titulo_otras . '</button>';
-    $output .= '<div class="contenido-acordeon tabla-scroll" style="display:none;">';
-    $output .= '<table class="tabla-etapa"><thead><tr>';
-    $output .= '<th class="centrado">' . ($idioma === 'en' ? 'Project' : 'Proyecto') . '</th>';
-    $output .= '<th class="centrado">' . ($idioma === 'en' ? 'Sector' : 'Sector') . '</th>';
-    $output .= '<th class="centrado">' . ($idioma === 'en' ? 'Subsector' : 'Subsector') . '</th>';
-    $output .= '<th class="centrado">' . ($idioma === 'en' ? 'Stage' : 'Etapa') . '</th>';
-    $output .= '<th class="centrado">' . ($idioma === 'en' ? 'Sustainability' : 'Sostenibilidad') . '</th>';
-    $output .= '<th class="centrado">' . ($idioma === 'en' ? 'With Ally Networks' : 'Con Redes de Alianza') . '</th>';
-    $output .= '</tr></thead><tbody>' . $tabla_otras . '</tbody></table>';
-    $output .= '</div>';
-}
-
+            $titulo_otras = $idioma === 'en' ? 'New Projects' : 'Proyectos Nuevos';
+            $output .= '<button class="btn-acordeon" aria-expanded="false">' . $titulo_otras . '</button>';
+            $output .= '<div class="contenido-acordeon tabla-scroll" style="display:none;">';
+            $output .= '<table class="tabla-etapa"><thead><tr>';
+            $output .= '<th class="centrado">' . ($idioma === 'en' ? 'Project' : 'Proyecto') . '</th>';
+            $output .= '<th class="centrado">' . ($idioma === 'en' ? 'Sector' : 'Sector') . '</th>';
+            $output .= '<th class="centrado">' . ($idioma === 'en' ? 'Subsector' : 'Subsector') . '</th>';
+            $output .= '<th class="centrado">' . ($idioma === 'en' ? 'Stage' : 'Etapa') . '</th>';
+            $output .= '<th class="centrado">' . ($idioma === 'en' ? 'Sustainability' : 'Sostenibilidad') . '</th>';
+            $output .= '<th class="centrado">' . ($idioma === 'en' ? 'With Ally Networks' : 'Con Redes de Alianza') . '</th>';
+            $output .= '</tr></thead><tbody>' . $tabla_otras . '</tbody></table>';
+            $output .= '</div>';
+        }
     }
 
     // Tabla proyectos en operación
 	error_log("Idioma: $idioma - Contenido tabla_operacion tiene " . strlen($tabla_operacion) . " caracteres.");
     if (!empty($tabla_operacion)) {
         if (!empty($tabla_operacion)) {
-    $titulo_operacion = $idioma === 'en' ? '+ Projects in Operation' : '+ Proyectos en Operación';
-    $output .= '<button class="btn-acordeon" aria-expanded="false">' . $titulo_operacion . '</button>';
-    $output .= '<div class="contenido-acordeon tabla-scroll" style="display:none;">';
-    $output .= '<table class="tabla-etapa"><thead><tr>';
-    $output .= '<th class="centrado">' . ($idioma === 'en' ? 'Project' : 'Proyecto') . '</th>';
-    $output .= '<th class="centrado">' . ($idioma === 'en' ? 'Sector' : 'Sector') . '</th>';
-    $output .= '<th class="centrado">' . ($idioma === 'en' ? 'Subsector' : 'Subsector') . '</th>';
-    $output .= '<th class="centrado">' . ($idioma === 'en' ? 'Stage' : 'Etapa') . '</th>';
-    $output .= '<th class="centrado">' . ($idioma === 'en' ? 'Sustainability' : 'Sostenibilidad') . '</th>';
-    $output .= '<th class="centrado">' . ($idioma === 'en' ? 'With Ally Networks' : 'Con Redes de Alianza') . '</th>';
-    $output .= '</tr></thead><tbody>' . $tabla_operacion . '</tbody></table>';
-    $output .= '</div>';
-}
-
+            $titulo_operacion = $idioma === 'en' ? 'Projects in Operation' : 'Proyectos en Operación';
+            $output .= '<button class="btn-acordeon" aria-expanded="false">' . $titulo_operacion . '</button>';
+            $output .= '<div class="contenido-acordeon tabla-scroll" style="display:none;">';
+            $output .= '<table class="tabla-etapa"><thead><tr>';
+            $output .= '<th class="centrado">' . ($idioma === 'en' ? 'Project' : 'Proyecto') . '</th>';
+            $output .= '<th class="centrado">' . ($idioma === 'en' ? 'Sector' : 'Sector') . '</th>';
+            $output .= '<th class="centrado">' . ($idioma === 'en' ? 'Subsector' : 'Subsector') . '</th>';
+            $output .= '<th class="centrado">' . ($idioma === 'en' ? 'Stage' : 'Etapa') . '</th>';
+            $output .= '<th class="centrado">' . ($idioma === 'en' ? 'Sustainability' : 'Sostenibilidad') . '</th>';
+            $output .= '<th class="centrado">' . ($idioma === 'en' ? 'With Ally Networks' : 'Con Redes de Alianza') . '</th>';
+            $output .= '</tr></thead><tbody>' . $tabla_operacion . '</tbody></table>';
+            $output .= '</div>';
+        }
     }
 
-    // Megaproyectos
-	error_log("Idioma: $idioma - Número de megaproyectos: " . count($query_megaproyectos->posts));
+    // Proyectos Estratégicos (megaproyectos)
     if (!empty($query_megaproyectos->posts)) {
-        $titulo_mega = $idioma === 'en' ? '+ Strategic Projects' : '+ Proyectos Estratégicos';
-        //$output .= '<button class="btn-acordeon-' . $idioma . '" aria-expanded="false">' . $titulo_mega . '</button>';
-		$output .= '<button class="btn-acordeon" aria-expanded="false">' . $titulo_mega . '</button>';
-        //$output .= '<div class="contenido-acordeon-' . $idioma . ' invers-color tabla-scroll" style="display:none; background-color: #3b3e40;">';
-		$output .= '<div class="toggle_content invers-color" itemprop="text" style="display:none; background-color: #3b3e40;">';
+        $titulo_mega = $idioma === 'en' ? 'Strategic Projects' : 'Proyectos Estratégicos';
+        $output .= '<button class="btn-acordeon" aria-expanded="false">' . $titulo_mega . '</button>';
+        $output .= '<div class="toggle_content invers-color" itemprop="text" style="display:none; background-color: #3b3e40;">';
         $output .= '<ul style="color: ' . ($idioma === 'en' ? '#8bfbff' : '#ccc') . ';">';
+        
+        // Mostrar los megaproyectos
         foreach ($query_megaproyectos->posts as $mega_id) {
             $title = $obtener_titulo_proyecto($mega_id);
             $href = get_permalink($mega_id);
@@ -460,10 +481,10 @@ error_log("sector_id: $sector_id, subsector_id: $subsector_id, etapa_id: $etapa_
                 $href = add_query_arg('language', 'en', $href);
             }
             $output .= '<li style="list-style: disc inside; color:#8bfbff;">
-                
-				<a href="' . esc_url($href) . '" target="_blank" style="text-decoration: underline !important; color:#8bfbff !important;">' . esc_html($title) . '</a>
+                <a href="' . esc_url($href) . '" target="_blank" style="text-decoration: underline !important; color:#8bfbff !important;">' . esc_html($title) . '</a>
             </li>';
         }
+        
         $output .= '</ul></div>';
     }
 
@@ -518,63 +539,154 @@ function obtener_filtros_por_pagina($page_id) {
     return isset($filtropag[$page_id]) ? $filtropag[$page_id] : false;
 }
 
+
+
 function estilo_tablas_etapas() {
-		echo '<style>
-			.tabla-scroll {
-				overflow-x: auto;
-				width: 100%;
-			}
+    echo '<style>
+        .tabla-scroll {
+            overflow-x: auto;
+            width: 100%;
+        }
 
-		table.tabla-etapa { 
-		margin-top: 25px; 
-		}
-			table.tabla-etapa {
-				width: 100%;
-				border-collapse: collapse;
-				min-width: 600px;
-			}
-			table.tabla-etapa tbody tr:nth-child(odd) {
-				background-color: #ffffff; color: #000000;
-			}
-			table.tabla-etapa tbody tr:nth-child(odd) .enlace-proyecto {
-				color: #000000;
-			}
-			table.tabla-etapa tbody tr:nth-child(even) {
-				background-color: #008B8B; color: #ffffff;
-			}
-			table.tabla-etapa tbody tr:nth-child(even) .enlace-proyecto {
-				color: #ffffff;
-			}
-			table.tabla-etapa thead th {
-				background-color: #008B8B !important;
-				color: white !important;
-			}
-			table.tabla-etapa td,
-			table.tabla-etapa th {
-				padding: 8px;
-				border: 1px solid #ddd;
-			}
-			button.btn-acordeon {
-				background-color: #008B8B; color: white; cursor: pointer;
-				padding: 10px 15px; width: 100%; text-align: left;
-				font-size: 16px; border: none; outline: none;
-				margin-bottom: 5px; transition: background-color 0.3s ease;
-			}
-			button.btn-acordeon:hover {
-				background-color: #006666;
-			}
-			.contenido-acordeon {
-				background-color: #3b3e40;
-				padding: 0 15px 15px 15px;
-				border: 1px solid #008B8B;
-				margin-bottom: 10px;
-			}
+        table.tabla-etapa { 
+            margin-top: 25px; 
+        }
+        table.tabla-etapa {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        table.tabla-etapa tbody tr:nth-child(odd) {
+            background-color: #ffffff; 
+            color: #000000;
+        }
+        table.tabla-etapa tbody tr:nth-child(odd) .enlace-proyecto {
+            color: #000000;
+        }
+        table.tabla-etapa tbody tr:nth-child(even) {
+            background-color: #008B8B; 
+            color: #ffffff;
+        }
+        table.tabla-etapa tbody tr:nth-child(even) .enlace-proyecto {
+            color: #ffffff;
+        }
+        table.tabla-etapa thead th {
+            background-color: #008B8B !important;
+            color: white !important;
+        }
+        table.tabla-etapa td,
+        table.tabla-etapa th {
+            padding: 8px;
+            border: 1px solid #ddd;
+        }
 
-		.centrado {
-		text-align: center;
-	}
-		</style>';
-	}
+        /* Estilos del acordeón cuando está cerrado */
+        button.btn-acordeon {
+            background-color: #FFFFFF;
+            color: #008B8B;
+            cursor: pointer;
+            padding: 10px 15px;
+            width: 100%;
+            text-align: left;
+            font-size: 16px;
+            font-weight: bold !important;
+            font-family: "Open Sans", sans-serif;
+            border: 1px solid #008B8B;
+            outline: none;
+            margin-bottom: 0;
+            transition: all 0.3s ease;
+            position: relative;
+            padding-left: 50px; /* Espacio para el cuadrado con el signo + */
+            border-top-left-radius: 2px;
+            border-top-right-radius: 2px;
+        }
+
+        /* Regla específica para un solo acordeón */
+        button.btn-acordeon:only-of-type {
+            border: 1px solid #008B8B !important;
+        }
+
+        /* Reglas para los bordes cuando hay dos acordeones */
+        button.btn-acordeon:last-of-type:nth-last-of-type(1):nth-of-type(2) {
+            border-top: none;
+        }
+
+        /* Reglas para los bordes cuando hay tres acordeones */
+        button.btn-acordeon:first-of-type:nth-last-of-type(3) {
+            border-bottom: none;
+        }
+
+        button.btn-acordeon:last-of-type:nth-last-of-type(1):not(:only-of-type) {
+            border-top: none;
+        }
+
+        /* Pseudo-elemento para el cuadrado con el signo + */
+        button.btn-acordeon::before {
+            content: "+";
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 15px;
+            height: 15px;
+            border: 1px solid #008B8B;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: bold !important;
+            font-family: "Open Sans", sans-serif;
+            background-color: #FFFFFF;
+            color: #008B8B;
+            transition: all 0.3s ease;
+        }
+
+        /* Cambio del signo + a - cuando está abierto */
+        button.btn-acordeon[aria-expanded="true"]::before {
+            content: "-";
+            background-color: #008B8B;
+            color: white;
+            border-color: white;
+            font-weight: bold !important;
+        }
+
+        /* Estilos del acordeón cuando está abierto */
+        button.btn-acordeon[aria-expanded="true"] {
+            background-color: #008B8B;
+            color: white;
+            border-color: #008B8B;
+            border-radius: 4px 4px 0 0;
+            font-weight: bold !important;
+        }
+
+        /* Hover del botón */
+        button.btn-acordeon:hover {
+            background-color: #008B8B;
+            color: white;
+            font-weight: bold !important;
+        }
+
+        /* Hover del cuadrado con el signo */
+        button.btn-acordeon:hover::before {
+            background-color: #008B8B;
+            color: white;
+            border-color: white;
+        }
+
+        .contenido-acordeon {
+            background-color: #3b3e40;
+            padding: 0 15px 15px 15px;
+            border: 1px solid #008B8B;
+            margin-bottom: 0;
+            border-radius: 0 0 4px 4px;
+            border-top: none;
+        }
+
+        .centrado {
+            text-align: center;
+        }
+    </style>';
+}
 add_action('wp_head', 'estilo_tablas_etapas'); 
 
 
@@ -675,19 +787,20 @@ add_action('wp_head', 'estilo_tablas_etapas');
 
     // Salida HTML
     $output = '<div class="resumen-conteo">';
+    $output .= '<ul class="conteo-automatico-lista" style="list-style-type: disc; padding-left: 20px; margin: 0;">';
     
     // Solo mostrar los elementos que tengan un conteo mayor a 0
     if ($total_proyectos > 0) {
-        $output .= "<p><strong>$texto_proyectos:</strong> " . number_format($total_proyectos) . '</p>';
+        $output .= "<li>" . number_format($total_proyectos) . " $texto_proyectos</li>";
     }
     if ($total_empresas > 0) {
-        $output .= "<p><strong>$texto_empresas:</strong> " . number_format($total_empresas) . '</p>';
+        $output .= "<li>" . number_format($total_empresas) . " $texto_empresas</li>";
     }
     if ($total_consorcios > 0) {
-        $output .= "<p><strong>$texto_consorcios:</strong> " . number_format($total_consorcios) . '</p>';
+        $output .= "<li>" . number_format($total_consorcios) . " $texto_consorcios</li>";
     }
     
-    $output .= '</div>';
+    $output .= '</ul></div>';
 
     return $output;
 }
@@ -706,11 +819,9 @@ add_shortcode('conteo_procura_auto', 'conteo_procura_auto_idioma');
 					if (estaAbierto) {
 						contenido.style.display = 'none';
 						this.setAttribute('aria-expanded', 'false');
-						this.textContent = '+ ' + this.textContent.substring(2);
 					} else {
 						contenido.style.display = 'block';
 						this.setAttribute('aria-expanded', 'true');
-						this.textContent = '- ' + this.textContent.substring(2);
 					}
 				});
 			}
