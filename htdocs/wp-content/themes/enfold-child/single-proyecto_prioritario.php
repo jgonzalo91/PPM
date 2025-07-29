@@ -1,19 +1,18 @@
-<?php /* Template Name: Hola Mundo con Campos */ get_header(); ?> 
-<style>
+<?php /* Template Name: Hola Mundo con Campos */ get_header(); ?> <style>
     .tabla-scroll {
         overflow-x: auto;
         width: 100%;
         padding-left: 100px;
         padding-right: 100px;
     }
-    table.tabla-etapa { 
-        margin-top: 25px; 
+    table.tabla-etapa {
+        margin-top: 25px;
         width: 100%;
         border-collapse: collapse;
         min-width: 600px;
     }
     table.tabla-etapa tbody tr:nth-child(odd) {
-        background-color: #ffffff; 
+        background-color: #ffffff;
         color: #000000;
     }
     table.tabla-etapa tbody tr:nth-child(odd) a {
@@ -21,7 +20,7 @@
         text-decoration: underline;
     }
     table.tabla-etapa tbody tr:nth-child(even) {
-        background-color: #008B8B; 
+        background-color: #008B8B;
         color: #ffffff;
     }
     table.tabla-etapa tbody tr:nth-child(even) a {
@@ -44,8 +43,7 @@
         white-space: pre-wrap;
         font-family: inherit;
     }
-</style>
-<main id="main-content">
+</style> <main id="main-content">
     <h1><?php echo esc_html(get_the_title()); ?></h1>
     <?php
     $post_id = get_the_ID();
@@ -114,7 +112,8 @@
                                 // Mostrar fuente como enlace si es una URL
                                 if (!empty($row['fuente'])) {
                                     if (filter_var($row['fuente'], FILTER_VALIDATE_URL)) {
-                                        echo '<strong>Fuente:</strong> <a href="' . esc_url($row['fuente']) . '" target="_blank" style="color: white; text-decoration: underline;">' . esc_html($row['fuente']) . '</a>';
+                                        echo '<strong>Fuente:</strong> <a href="' . esc_url($row['fuente']) . '" target="_blank" style="color: 
+white; text-decoration: underline;">' . esc_html($row['fuente']) . '</a>';
                                     } else {
                                         echo '<strong>Fuente:</strong> ' . esc_html($row['fuente']);
                                     }
@@ -143,7 +142,6 @@
                                     }
                                 }
                                 break;
-
                             case 'ejes_objeticos_y_estrategias':
                                 // Mostrar Eje PND
                                 if (!empty($row['eje_pnd'])) {
@@ -169,7 +167,6 @@
                                     }
                                 }
                                 break;
-
                                 case 'mia_por_proyecto':
                                     //mostar mia por proyecto
                                     if(!empty($row['clave_rpoyecto'])){
@@ -178,9 +175,7 @@
                                     if (!empty($row['descripcion_mia_proyecto'])) {
                                         echo '<br><strong>Descripción:</strong> ' . esc_html($row['descripcion_mia_proyecto']);
                                     }
-
                                     break;
-
                                     case 'plan_pertenece':
                                         if (!empty($row['plan_programa_o_presentacion']) && $row['mostrar_plan'] == 1) {
                                             $plan_post = get_post($row['plan_programa_o_presentacion']);
@@ -191,7 +186,6 @@
                                             }
                                         }
                                         break;
-
                                     case 'otras_ligas_por_proyecto':
                                         if (!empty($row['identificador_descripcion'])) {
                                             echo '<div style="margin-bottom: 10px;">';
@@ -199,7 +193,8 @@
                                             
                                             if (!empty($row['url_otras'])) {
                                                 if (filter_var($row['url_otras'], FILTER_VALIDATE_URL)) {
-                                                    echo '<br><strong>URL:</strong> <a href="' . esc_url($row['url_otras']) . '" target="_blank" style="color: white; text-decoration: underline;">' . esc_html($row['url_otras']) . '</a>';
+                                                    echo '<br><strong>URL:</strong> <a href="' . esc_url($row['url_otras']) . '" target="_blank" 
+style="color: white; text-decoration: underline;">' . esc_html($row['url_otras']) . '</a>';
                                                 } else {
                                                     echo '<br><strong>URL:</strong> ' . esc_html($row['url_otras']);
                                                 }
