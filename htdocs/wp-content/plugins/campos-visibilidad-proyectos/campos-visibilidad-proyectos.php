@@ -320,6 +320,108 @@ function exportar_proyectos_csv() {
     }
 
     // Preparar encabezados dinámicos con soporte para subcampos de repeaters
+
+    $etiquetas_amigables = [
+        'ultima_revision_proyecto' => 'Última revisión',
+        'ultima_situacion_proyecto' => 'Última situación',
+        'sector_proyecto' => 'Sector',
+        'subsector_proyecto' => 'Subsector',
+        'descripcion_proyecto' => 'Descripción',
+        'notas_internas_proyecto' => 'Notas internas',
+        'datos_de_contacto_proyecto' => 'Datos de contacto',
+        'monto_de_inversion_estimado_mxn_proyecto' => 'Monto estimado MXN',
+        'monto_de_inversion_estimado_usd_proyecto' => 'Monto estimado USD',
+        'empleos_prpoyecto' => 'Empleos (proyecto)',
+        'promotor_convocante_proyecto' => 'Promotor / Convocante',
+        'tipos_de_contrato_proyecto' => 'Tipos de contrato',
+        'fuente_de_financiamiento_proyecto' => 'Fuente de financiamiento',
+        'apoyo_fonadin_proyecto' => 'Apoyo FONADIN',
+        'etapa_proyecto' => 'Etapa',
+        'adjudicatario_general_del_proyecto' => 'Adjudicatario general',
+        'estado_proyecto' => 'Estado',
+        'ciudad_municipio_otro_proyecto' => 'Ciudad / Municipio / Otro',
+        'region_polos_de_bienestar_proyectos' => 'Región / Polos de Bienestar',
+        'coordenadas_proyecto' => 'Coordenadas',
+        'mapa_proyecto' => 'Mapa',
+        'proyectos_mexico_proyecto' => 'Proyectos México',
+        'informacion_no_oficial_proyecto' => 'Información no oficial',
+    
+        // Repeater: compras_mx_proyecto
+        'compras_mx_proyecto_0_claves_compras_mx' => 'Claves compras MX (1)',
+        'compras_mx_proyecto_0_descripcion' => 'Descripción compras MX (1)',
+        'compras_mx_proyecto_1_claves_compras_mx' => 'Claves compras MX (2)',
+        'compras_mx_proyecto_1_descripcion' => 'Descripción compras MX (2)',
+        'compras_mx_proyecto_2_claves_compras_mx' => 'Claves compras MX (3)',
+        'compras_mx_proyecto_2_descripcion' => 'Descripción compras MX (3)',
+    
+        // Repeater: mia_por_proyecto
+        'mia_por_proyecto_0_clave_rpoyecto' => 'Clave MIA (1)',
+        'mia_por_proyecto_0_descripcion_mia_proyecto' => 'Descripción MIA (1)',
+        'mia_por_proyecto_1_clave_rpoyecto' => 'Clave MIA (2)',
+        'mia_por_proyecto_1_descripcion_mia_proyecto' => 'Descripción MIA (2)',
+        'mia_por_proyecto_2_clave_rpoyecto' => 'Clave MIA (3)',
+        'mia_por_proyecto_2_descripcion_mia_proyecto' => 'Descripción MIA (3)',
+    
+        // Repeater: registros_ui_por_proyecto
+        'registros_ui_por_proyecto_0_clave' => 'Registro UI Clave (1)',
+        'registros_ui_por_proyecto_0_descripcion' => 'Registro UI Descripción (1)',
+        'registros_ui_por_proyecto_1_clave' => 'Registro UI Clave (2)',
+        'registros_ui_por_proyecto_1_descripcion' => 'Registro UI Descripción (2)',
+        'registros_ui_por_proyecto_2_clave' => 'Registro UI Clave (3)',
+        'registros_ui_por_proyecto_2_descripcion' => 'Registro UI Descripción (3)',
+    
+        // Repeater: otras_ligas_por_proyecto
+        'otras_ligas_por_proyecto_0_identificador_descripcion' => 'Liga Descripción (1)',
+        'otras_ligas_por_proyecto_0_url_otras' => 'Liga URL (1)',
+        'otras_ligas_por_proyecto_1_identificador_descripcion' => 'Liga Descripción (2)',
+        'otras_ligas_por_proyecto_1_url_otras' => 'Liga URL (2)',
+        'otras_ligas_por_proyecto_2_identificador_descripcion' => 'Liga Descripción (3)',
+        'otras_ligas_por_proyecto_2_url_otras' => 'Liga URL (3)',
+    
+        // Repeater: plan_pertenece
+        'plan_pertenece_0_plan_programa_o_presentacion' => 'Plan / Programa (1)',
+        'plan_pertenece_0_mostrar_plan' => 'Mostrar plan (1)',
+        'plan_pertenece_1_plan_programa_o_presentacion' => 'Plan / Programa (2)',
+        'plan_pertenece_1_mostrar_plan' => 'Mostrar plan (2)',
+        'plan_pertenece_2_plan_programa_o_presentacion' => 'Plan / Programa (3)',
+        'plan_pertenece_2_mostrar_plan' => 'Mostrar plan (3)',
+        'plan_pertenece_3_plan_programa_o_presentacion' => 'Plan / Programa (4)',
+        'plan_pertenece_3_mostrar_plan' => 'Mostrar plan (4)',
+    
+        // Repeater: ejes_objeticos_y_estrategias
+        'ejes_objeticos_y_estrategias_0_eje_pnd' => 'Eje PND (1)',
+        'ejes_objeticos_y_estrategias_0_objetivo' => 'Objetivo (1)',
+        'ejes_objeticos_y_estrategias_0_estrategia' => 'Estrategia (1)',
+        'ejes_objeticos_y_estrategias_1_eje_pnd' => 'Eje PND (2)',
+        'ejes_objeticos_y_estrategias_1_objetivo' => 'Objetivo (2)',
+        'ejes_objeticos_y_estrategias_1_estrategia' => 'Estrategia (2)',
+    
+        // Repeater: dato_por_fuente
+        'dato_por_fuente_0_fuente' => 'Fuente (1)',
+        'dato_por_fuente_0_comentarios' => 'Comentarios (1)',
+        'dato_por_fuente_0_dato' => 'Dato (1)',
+        'dato_por_fuente_1_fuente' => 'Fuente (2)',
+        'dato_por_fuente_1_comentarios' => 'Comentarios (2)',
+        'dato_por_fuente_2_fuente' => 'Fuente (3)',
+        'dato_por_fuente_2_comentarios' => 'Comentarios (3)',
+        'dato_por_fuente_3_dato' => 'Dato (4)',
+        'dato_por_fuente_3_fuente' => 'Fuente (4)',
+        'dato_por_fuente_3_comentarios' => 'Comentarios (4)',
+    
+        // Campos genéricos
+        'campo_numerico_1' => 'Campo numérico 1',
+        'campo_numerico_2' => 'Campo numérico 2',
+        'campo_numerico_3' => 'Campo numérico 3',
+        'campo_numerico_4' => 'Campo numérico 4',
+        'campo_numerico_5' => 'Campo numérico 5',
+        'campo_texto_1' => 'Campo texto 1',
+        'campo_texto_2' => 'Campo texto 2',
+        'campo_texto_3' => 'Campo texto 3',
+        'campo_texto_4' => 'Campo texto 4',
+        'campo_texto_5' => 'Campo texto 5',
+    ];
+    
+
     $meta_keys = [];
     $subcampos_repeaters = [];
 
@@ -366,7 +468,11 @@ foreach ($metas as $key => $value) {
 $meta_keys = array_diff($meta_keys, ['id_unico_proyecto', 'id_unico_proyecto_base','compras_mx_proyecto','mia_por_proyecto','registros_ui_por_proyecto','otras_ligas_por_proyecto','plan_pertenece','ejes_objeticos_y_estrategias','dato_por_fuente']);
 
     // Encabezado
-    $header = array_merge(['ID Único Proyecto', 'Proyecto | Iniciativa'], $meta_keys);
+    $header = ['ID Único Proyecto', 'Proyecto | Iniciativa'];
+
+foreach ($meta_keys as $key) {
+    $header[] = isset($etiquetas_amigables[$key]) ? $etiquetas_amigables[$key] : $key;
+}
     fputcsv($output, $header);
 
     foreach ($proyectos as $proyecto) {
