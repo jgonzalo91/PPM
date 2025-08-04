@@ -364,6 +364,52 @@ foreach ($metas as $key => $value) {
 }
 
     }
+	
+	$orden_personalizado = [
+    'ID Único Proyecto',
+    'Proyecto | Iniciativa',
+    'Ultima Revision',
+    'Ultima Situacion',
+    'Sector',
+    'Subsector',
+    'Descripcion',
+    'Notas Internas',
+    'Datos de Contacto',
+    'Monto de inversion estimado MXN',
+    'Monto de inversion estimado USD',
+    'Empleos',
+    'Promotor | Convocante',
+    'Tipos de Contrato',
+    'Fuente de financiamiento',
+    'Apoyo Fonadin',
+    'Etapa',
+    'Adjudicatario',
+    'Estado',
+    'Ciudad / municipio / otro',
+    'Region Polos de Bienestar',
+    'Coordenadas',
+    'Mapa',
+    'Proyectos Mexico',
+    'Compras MX',
+    'Mia por Proyecto',
+    'Registros UI por Proyecto',
+    'Otras Ligas por Proyecto',
+    'Informacion no oficial',
+    'Planes a los que Pertence',
+    'Ejes, Objeticos y Estrategias',
+    'Fuentes',
+    'Campo Numerico 1',
+    'Campo Numerico 2',
+    'Campo Numerico 3',
+    'Campo Numerico 4',
+    'Campo Numerico 5',
+    'Campo Texto 1',
+    'Campo Texto 2',
+    'Campo Texto 3',
+    'Campo Texto 4',
+    'Campo Texto 5',
+];
+
 
 // 🔴 Eliminar columnas no deseadas del CSV
 $meta_keys = array_diff($meta_keys, ['id_unico_proyecto', 'id_unico_proyecto_base','compras_mx_proyecto','mia_por_proyecto','registros_ui_por_proyecto','otras_ligas_por_proyecto','plan_pertenece','ejes_objeticos_y_estrategias','dato_por_fuente']);
@@ -374,88 +420,93 @@ $meta_keys = array_diff($meta_keys, ['id_unico_proyecto', 'id_unico_proyecto_bas
 }*/
 
 $etiquetas_visibilidad = get_option('campos_visibilidad_proyecto', []);
-$header = ['ID Único Proyecto', 'Proyecto | Iniciativa'];
+$etiquetas_amigables = [];
+$mapa_etiquetas_a_claves = [];
 
-
+// Agrupar meta_keys por etiquetas amigables o visibilidad
 foreach ($meta_keys as $key) {
-    $etiqueta_final = $key; // Valor por defecto
+    $etiqueta_final = obtener_etiqueta_amigable($key, $etiquetas_visibilidad, $etiquetas_amigables);
 
-    // Detectar si es un subcampo de repeater: algo_0_algo
-    if (preg_match('/^([a-zA-Z0-9_]+)_\d+_[a-zA-Z0-9_]+$/', $key, $matches)) {
-        $campo_principal = $matches[1];
-
-        // Intentar encontrar su label en la config de visibilidad
-        if (isset($etiquetas_visibilidad[$campo_principal])) {
-            $etiqueta_final = $etiquetas_visibilidad[$campo_principal];
-        } elseif (isset($etiquetas_amigables[$campo_principal])) {
-            $etiqueta_final = $etiquetas_amigables[$campo_principal];
-        } else {
-            $etiqueta_final = $campo_principal;
-        }
-    } 
-    // Si no es repeater
-    else {
-        if (isset($etiquetas_visibilidad[$key])) {
-            $etiqueta_final = $etiquetas_visibilidad[$key];
-        } elseif (isset($etiquetas_amigables[$key])) {
-            $etiqueta_final = $etiquetas_amigables[$key];
-        }
+    if (!isset($mapa_etiquetas_a_claves[$etiqueta_final])) {
+        $mapa_etiquetas_a_claves[$etiqueta_final] = [];
     }
 
-    $header[] = $etiqueta_final;
+    $mapa_etiquetas_a_claves[$etiqueta_final][] = $key;
 }
 
+// Encabezado
+fputcsv($output, $orden_personalizado);
 
+error_log("hola mundo");
 
+// Recorrer proyectos
+foreach ($proyectos as $proyecto) {
+    $row = [];
 
+    foreach ($orden_personalizado as $etiqueta) {
+        if ($etiqueta === 'ID Único Proyecto') {
+            $row[] = "\t" . get_post_meta($proyecto->ID, 'id_unico_proyecto', true);
+            continue;
+        }
 
-    fputcsv($output, $header);
+        if ($etiqueta === 'Proyecto | Iniciativa') {
+            $row[] = get_the_title($proyecto->ID);
+            continue;
+        }
 
-    foreach ($proyectos as $proyecto) {
-        $row = [
-            //$proyecto->ID,
-		 //get_post_meta($proyecto->ID, 'id_unico_proyecto', true),
-"\t" . get_post_meta($proyecto->ID, 'id_unico_proyecto', true),            
-get_the_title($proyecto->ID),
-        ];
+        $valores = [];
 
-        foreach ($meta_keys as $key) {
-            if (isset($subcampos_repeaters[$key])) {
-                list($parent_key, $subkey) = $subcampos_repeaters[$key];
-                $val = get_post_meta($proyecto->ID, $parent_key, true);
-
-                $val = maybe_unserialize($val);
-                $valores = [];
-
-                if (is_array($val)) {
-                    foreach ($val as $fila) {
-                        if (isset($fila[$subkey])) {
-                            // Aquí usamos convertir_valor_para_csv para manejar subarrays o limpieza
-                            $valores[] = convertir_valor_para_csv($fila[$subkey]);
+        if (isset($mapa_etiquetas_a_claves[$etiqueta])) {
+			error_log("mapa etiquetas");
+            foreach ($mapa_etiquetas_a_claves[$etiqueta] as $key) {
+				
+				error_log("for mana eqtiquetas");
+				error_log("[CHECK KEY] key actual: $key");
+                if (isset($subcampos_repeaters[$key])) { //codigo a revisar
+					 error_log("subcampos");
+                    list($parent_key, $subkey) = $subcampos_repeaters[$key];
+                    $val = maybe_unserialize(get_post_meta($proyecto->ID, $parent_key, true));
+                    if (is_array($val)) {
+                        foreach ($val as $fila) {		
+                            if (isset($fila[$subkey])) {
+                                $valores[] = convertir_valor_para_csv($fila[$subkey]);
+                            }
                         }
                     }
-                }
+                } else { // codigo a revisar fin
+                    $valor = get_post_meta($proyecto->ID, $key, true);
+                   // Ignorar cualquier campo 'mostrar_*' que sea un checkbox (valor '1' o '0')
+					if (strpos($key, 'mostrar_') === 0 && in_array($valor, ['0', '1'], true)) {
+						continue;
+					}
+					
+					if (strpos($key, 'plan_pertenece_') === 0 && in_array($valor, ['0', '1'], true)) {
+						continue;
+					}
+					
+					
 
-                // Unimos con salto de línea para mejor lectura en Excel (multi-línea en celda)
-                $row[] = implode("\n", $valores);
-            } else {
-                $val = get_post_meta($proyecto->ID, $key, true);
-                $row[] = convertir_valor_para_csv($val);
+                    $valores[] = convertir_valor_para_csv($valor);
+					
+					
+					
+                }
             }
         }
-
-        fputcsv($output, $row);
+		error_log("fin del csv");
+        $row[] = implode("|", array_filter($valores));
     }
 
-    fclose($output);
-    exit;
+    fputcsv($output, $row);
 }
 
-
-// funcion para limpiar campos y manejar arrays anidados (repeater también)
+fclose($output);
+exit;
+}
+// --------------------------------------
+// Función para limpiar y formatear valores
 function convertir_valor_para_csv($val) {
     if (is_array($val)) {
-        // Si es un array de arrays (repeater o similar)
         if (isset($val[0]) && is_array($val[0])) {
             $filas = [];
             foreach ($val as $fila) {
@@ -463,12 +514,11 @@ function convertir_valor_para_csv($val) {
                 foreach ($fila as $subkey => $subval) {
                     $subcampos[] = $subkey . ': ' . convertir_valor_para_csv($subval);
                 }
-                $filas[] = implode(' | ', $subcampos);
+                $filas[] = implode("|", $subcampos);
             }
-            return implode("\n", $filas);
+            return implode("|", $filas);
         } else {
-            // Array simple
-            return implode(', ', array_map('convertir_valor_para_csv', $val));
+            return implode("|", array_map('convertir_valor_para_csv', $val));
         }
     }
 
@@ -484,6 +534,31 @@ function convertir_valor_para_csv($val) {
 
     return $val;
 }
+
+// --------------------------------------
+// Función para determinar etiqueta final
+function obtener_etiqueta_amigable($key, $etiquetas_visibilidad, $etiquetas_amigables) {
+    if (preg_match('/^([a-zA-Z0-9_]+)_\d+_[a-zA-Z0-9_]+$/', $key, $matches)) {
+        $campo_principal = $matches[1];
+
+        if (isset($etiquetas_visibilidad[$campo_principal])) {
+            return $etiquetas_visibilidad[$campo_principal];
+        } elseif (isset($etiquetas_amigables[$campo_principal])) {
+            return $etiquetas_amigables[$campo_principal];
+        } else {
+            return $campo_principal;
+        }
+    } else {
+        if (isset($etiquetas_visibilidad[$key])) {
+            return $etiquetas_visibilidad[$key];
+        } elseif (isset($etiquetas_amigables[$key])) {
+            return $etiquetas_amigables[$key];
+        } else {
+            return $key;
+        }
+    }
+}
+
 
 
 /*add_action('restrict_manage_posts', 'boton_exportar_proyectos_prioritarios');
