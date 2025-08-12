@@ -2,8 +2,8 @@
 /**
  * Plugin Name: Tabla Sector + Conteo Procura (Multiidioma)
  * Description: Muestra tablas y conteos de proyectos por sector/subsector con soporte para español e inglés.
- * Version: 1.0
- * Author: JESUS GONZALEZ LOPEZ
+ * Version: 1.1
+ * Author: BANOBRAS
  */
 
 defined('ABSPATH') or die('¡Sin acceso directo, por favor!');
@@ -47,103 +47,108 @@ function agregar_estilos_ocultar_tablas() {
         return;
     }
 
-    // Obtener el ID de la página actual
     $current_page_id = get_the_ID();
     if (!$current_page_id) {
         return;
     }
 
-    // Detectar el idioma actual usando Polylang si está disponible
     $idioma = function_exists('pll_current_language') ? pll_current_language() : 'es';
 
-    // Obtener los IDs de páginas según el idioma
-    $paginas_permitidas = array();
+    $paginas_permitidas = [];
     if ($idioma === 'en') {
-        // IDs de páginas en inglés
-        $paginas_permitidas = array(
-            14369, 14395, 14382, 14365, 14410, 
+        $paginas_permitidas = [
+            14369, 14395, 14382, 14365, 14410,
             14374, 14412, 14378, 94795, 14390
-        );
+        ];
     } else {
-        // IDs de páginas en español
-        $paginas_permitidas = array(
-            9386, 88706, 9377, 9383, 9367, 
+        $paginas_permitidas = [
+            9386, 88706, 9377, 9383, 9367,
             9354, 9357, 9363, 9370, 94774
-        );
+        ];
     }
 
-    // Verificar si la página actual está en la lista de páginas permitidas
     if (in_array($current_page_id, $paginas_permitidas)) {
-        echo '<style>
-            .togglecontainer.el_after_av_textblock.el_before_av_textblock.enable_toggles {
-                display: none !important;
+        echo <<<EOD
+<style>
+    /* Mostrar siempre conteos automáticos */
+    .resumen-conteo {
+        display: block !important;
+        margin-top: 20px !important;
+    }
+    .resumen-conteo .conteo-automatico-lista {
+        display: block !important;
+        list-style-type: disc !important;
+        padding-left: 20px !important;
+        margin: 0 !important;
+    }
+    .resumen-conteo .conteo-automatico-lista li {
+        margin-bottom: 10px !important;
+        color: black !important;
+    }
+</style>
+<script>
+jQuery(document).ready(function($) {
+    function ocultarListasManualesConTresPalabras() {
+        $('ul:not(.conteo-automatico-lista)').each(function() {
+            var \$ul = $(this);
+            var lis = \$ul.find('li');
+
+            if (lis.length !== 3) {
+                return;
             }
-            
-            /* Ocultar el párrafo introductorio y la lista de conteos manuales */
-            .avia_textblock p:contains("pueden consultar sobre el sector"),
-            .avia_textblock p:contains("can consult about the sector"),
-            .avia_textblock ul:not(.conteo-automatico-lista):has(li:contains("proyectos")),
-            .avia_textblock ul:not(.conteo-automatico-lista):has(li:contains("empresas")),
-            .avia_textblock ul:not(.conteo-automatico-lista):has(li:contains("consorcios")),
-            .avia_textblock ul:not(.conteo-automatico-lista):has(li:contains("Projects")),
-            .avia_textblock ul:not(.conteo-automatico-lista):has(li:contains("Companies")),
-            .avia_textblock ul:not(.conteo-automatico-lista):has(li:contains("Consortiums")) {
-                display: none !important;
+
+            var textos = lis.map(function() {
+                return $(this).text().toLowerCase();
+            }).get();
+
+            var tieneProyectos = textos.some(t => t.includes('proyectos'));
+            var tieneEmpresas = textos.some(t => t.includes('empresas'));
+            var tieneConsorcios = textos.some(t => t.includes('consorcios'));
+
+            var tieneProjects = textos.some(t => t.includes('projects'));
+            var tieneCompanies = textos.some(t => t.includes('companies'));
+            var tieneConsortiums = textos.some(t => t.includes('consortiums'));
+
+            if ((tieneProyectos && tieneEmpresas && tieneConsorcios) ||
+                (tieneProjects && tieneCompanies && tieneConsortiums)) {
+                \$ul.hide();
             }
-            
-            /* Estilos para el conteo automático */
-            .resumen-conteo {
-                display: block !important;
-                margin-top: 20px !important;
-            }
-            .resumen-conteo .conteo-automatico-lista {
-                display: block !important;
-                list-style-type: disc !important;
-                padding-left: 20px !important;
-                margin: 0 !important;
-            }
-            .resumen-conteo .conteo-automatico-lista li {
-                margin-bottom: 10px !important;
-                color: black !important;
-            }
-        </style>
-        <script>
-        jQuery(document).ready(function($) {
-            function ocultarConteosManuales() {
-                // Ocultar la lista que contiene los conteos manuales
-                $(".avia_textblock ul").each(function() {
-                    var $ul = $(this);
-                    var contieneConteos = false;
-                    
-                    // Verificar si la lista contiene elementos de conteo
-                    $ul.find("li").each(function() {
-                        var texto = $(this).text().trim();
-                        if (texto.match(/\d+\s*(proyectos|empresas|consorcios|Projects|Companies|Consortiums)/i)) {
-                            contieneConteos = true;
-                            return false; // Salir del bucle each
-                        }
-                    });
-                    
-                    if (contieneConteos) {
-                        // Ocultar la lista y el párrafo introductorio anterior
-                        $ul.prev("p").hide();
-                        $ul.hide();
-                    }
-                });
-            }
-            
-            // Ejecutar cuando el documento esté listo
-            ocultarConteosManuales();
-            
-            // Ejecutar después de cualquier actualización de AJAX
-            $(document).ajaxComplete(function() {
-                ocultarConteosManuales();
-            });
         });
-        </script>';
+    }
+
+    function ocultarAcordeonesManuales() {
+        var titulosOcultar = [
+            "proyectos nuevos",
+            "proyectos en operación",
+            "proyectos estratégicos",
+            "new projects",
+            "projects in operation",
+            "strategic projects"
+        ];
+
+        titulosOcultar.forEach(function(texto) {
+            $('.single_toggle').filter(function() {
+                return $(this).find('p.toggler').text().toLowerCase().includes(texto);
+            }).hide();
+        });
+    }
+
+    ocultarListasManualesConTresPalabras();
+    ocultarAcordeonesManuales();
+
+    $(document).ajaxComplete(function() {
+        ocultarListasManualesConTresPalabras();
+        ocultarAcordeonesManuales();
+    });
+});
+</script>
+EOD;
     }
 }
 add_action('wp_head', 'agregar_estilos_ocultar_tablas', 999);
+
+
+
 
 
 // Función auxiliar para ordenar por número de proyecto
