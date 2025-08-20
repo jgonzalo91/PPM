@@ -4,6 +4,11 @@
  * Description: Muestra tablas y conteos de proyectos por sector/subsector con soporte para español e inglés.
  * Version: 1.1
  * Author: BANOBRAS
+ *
+ * Changelog:
+ * v1.1 - 2025-08-11
+ *   - Se corrigió el la visualización para que solo detecte una lista de 3 elementos para conteos de redes de alianza.
+ *
  */
 
 defined('ABSPATH') or die('¡Sin acceso directo, por favor!');
