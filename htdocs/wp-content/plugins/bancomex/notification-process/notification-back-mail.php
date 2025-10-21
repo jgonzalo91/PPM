@@ -1,11 +1,86 @@
 <?php
 
+//* Capability específica (no la damos por rol) === */
+/*if (!defined('PMX_CAP_PROY_NUEVOS')) {
+  define('PMX_CAP_PROY_NUEVOS', 'pmx_manage_proyectos_nuevos');
+}*/
+
+/* Define aquí los usuarios permitidos (IDs o correos) ===
+   Ejemplos: 1 (ID), 'admin@tu-dominio.mx' (email)
+*/
+/*if (!function_exists('pmx_allowed_user_ids')) {
+  function pmx_allowed_user_ids(){
+    $raw = array(
+      28, //valeria
+	  33, //ramiro
+	
+    );
+
+    $ids = array();
+    foreach ($raw as $v) {
+      if (is_numeric($v)) {
+        $ids[] = (int)$v;
+      } elseif (is_string($v) && strpos($v, '@') !== false) {
+        $u = get_user_by('email', $v);
+        if ($u) $ids[] = (int)$u->ID;
+      }
+    }
+    $ids = array_values(array_unique(array_filter($ids)));
+    return apply_filters('pmx_allowed_user_ids', $ids);
+  }
+}*/
+
+/* Sincroniza la capability SOLO para el usuario actual ===
+   (antes de admin_menu, para que WP oculte/permita el menú correctamente)
+*/
+/*add_action('admin_init', function () {
+  if (!is_user_logged_in()) return;
+  $uid     = get_current_user_id();
+  $allowed = in_array($uid, pmx_allowed_user_ids(), true);
+  $u       = wp_get_current_user();
+
+  if ($allowed) {
+    if (!$u->has_cap(PMX_CAP_PROY_NUEVOS)) $u->add_cap(PMX_CAP_PROY_NUEVOS);
+  } else {
+    if ($u->has_cap(PMX_CAP_PROY_NUEVOS)) $u->remove_cap(PMX_CAP_PROY_NUEVOS);
+  }
+});*/
+
+
+
 function users_notification_setup_menu()
 {
     /*add_menu_page( 'Users Notification Page', 'Notificaciones de Usuarios', 'manage_options', 'notification-back-mail-plugin', 'users_notification_init', 'dashicons-admin-users'); */
     add_menu_page('Users Notification Page', 'Notificaciones de Usuarios', 'manage_options', 'notification-back-mail-plugin', 'users_notification_init', 'dashicons-admin-users');
     add_submenu_page('notification-back-mail-plugin', 'Users Notification Page', 'Registros de Follow', 'manage_options', 'notification-back-mail-plugin');
     add_submenu_page('notification-back-mail-plugin', 'My Custom Submenu Page', 'Bitacora de Notificaciones', 'manage_options', 'update-acf-dates', 'change_acf_dates_init');
+	
+	//add_submenu_page('notification-back-mail-plugin', 'New Project Page', 'Bitacora de Proyectos Nuevos', 'manage_options');
+	
+
+		add_submenu_page(
+	  'notification-back-mail-plugin', //padre plugin
+	  'Proceso Proyectos Nuevos', // titulo de la pagina
+	  'Proceso Proyectos Nuevos', // titulo del menu
+	  'manage_options', // permisos
+	  'pmx-proceso-proyectos-nuevos', //slug de la pagina del submenu
+	  'pmx_render_pagina_proceso_proyectos_nuevos' //callback
+	); 
+	
+	
+	 /*Submenú: Proceso Proyectos Nuevos
+  add_submenu_page(
+    'notification-back-mail-plugin',            // Padre plugin
+    'Proceso Proyectos Nuevos',                 // Título página
+    'Proceso Proyectos Nuevos',                 // Titulo  menú
+    PMX_CAP_PROY_NUEVOS,                        // Capability
+    'pmx-proceso-proyectos-nuevos',             // Slug submenú
+    'pmx_render_pagina_proceso_proyectos_nuevos'// Callback
+  );*/
+
+
+  
+	
     //add_submenu_page( 'notification-back-mail-plugin', 'Procesos', 'Procesos','manage_options', 'update-acf-procesos','change_acf_procesos_init');
 }
 function users_notification_init()
@@ -36,6 +111,746 @@ function change_acf_procesos_init()
 {
     include 'procesos.php';
 }
+
+
+// politica para filtrar proyectos nuevos
+if ( ! has_filter('pmx_conflict_policy_sector_subsector') ) {
+  add_filter('pmx_conflict_policy_sector_subsector', function(){ return 'or'; });
+}
+
+
+
+// Lee el atributo `default` del shortcode [bmxt_nuevos_ttl] en una página dada
+if (!function_exists('pmx_get_ttl_default_from_shortcode')) {
+  function pmx_get_ttl_default_from_shortcode($page_slug = 'proceso-ttl-proyectos-nuevos', $shortcode_tag = 'bmxt_nuevos_ttl') {
+    $page = get_page_by_path($page_slug);
+    if ($page) {
+      $content = get_post_field('post_content', $page->ID);
+      if (is_string($content) && $content !== '') {
+        $regex = get_shortcode_regex(); // busca cualquier shortcode
+        if (preg_match_all('/'.$regex.'/s', $content, $m)) {
+          foreach ($m[2] as $i => $tag) {
+            if ($tag === $shortcode_tag) {
+              $atts = shortcode_parse_atts($m[3][$i]);
+              if (isset($atts['default']) && $atts['default'] !== '') {
+                return trim((string)$atts['default']); // ej. "5m", "10h", "3600s"
+              }
+            }
+          }
+        }
+      }
+    }
+    return null; // no encontrado
+  }
+}
+
+// Convierte segundos a una forma corta agradable (d/h/m/s)
+if (!function_exists('pmx_secs_to_short')) {
+  function pmx_secs_to_short($secs) {
+    $s = (int)$secs;
+    if ($s % 86400 === 0) return (int)($s/86400) . 'd';
+    if ($s % 3600  === 0) return (int)($s/3600)  . 'h';
+    if ($s % 60    === 0) return (int)($s/60)    . 'm';
+    return $s . 's';
+  }
+}
+
+
+//call back de proyectos nuevos 
+
+/** Vista del submenú */
+//call back de proyectos nuevos 
+
+/** Vista del submenú */
+function pmx_render_pagina_proceso_proyectos_nuevos(){
+	
+	// Intenta traer el TTL desde el shortcode de la página runner
+$pmx_ui_ttl = pmx_get_ttl_default_from_shortcode('proceso-ttl-proyectos-nuevos'); // cambia el slug si es otro
+if ($pmx_ui_ttl === null || $pmx_ui_ttl === '') {
+  // Fallback: constante o 30 min
+  $pmx_ui_ttl = defined('PMX_NUEVO_TTL') ? pmx_secs_to_short((int)PMX_NUEVO_TTL) : '30m';
+}
+
+	
+    $nonce = wp_create_nonce('pmx_proc_nuevos');
+    ?>
+    <div class="wrap">
+      <h1>Proceso Proyectos Nuevos</h1>
+      <p>Los resultados se muestran abajo.</p>
+
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;">
+        <button id="pmx_btn_notif" class="button button-primary">
+          Ejecutar Notificación
+        </button>
+        <label for="pmx_value" style="margin-left:4px;">value:</label>
+        <input type="number" id="pmx_value" value="3" min="1" style="width:80px;" readonly>
+        <button id="pmx_btn_ttl" class="button">
+          Ejecutar TTL(Desmarcado de Proyectos)
+        </button>
+        <span id="pmx_spinner" class="spinner" style="float:none;"></span>
+      </div>
+
+      <pre id="pmx_output" style="max-height:460px;overflow:auto;background:#0b1220;color:#d2e1ff;padding:12px;border-radius:6px;border:1px solid #263238;">
+(Esperando acciones…)
+      </pre>
+	  
+	  <hr style="margin:18px 0;">
+    <h2>Proyectos marcados como “Nuevos”</h2>
+    <p>
+      <button id="pmx_btn_refresh_tabla" class="button">Actualizar tabla</button>
+	    <label for="pmx_ttl_view" style="margin-left:8px;">TTL tabla:</label>
+<input type="text" id="pmx_ttl_view" value="<?php echo esc_attr($pmx_ui_ttl); ?>" placeholder="p.ej. 10h, 30m, 3600s" style="width:140px;" readonly>
+      <span id="pmx_spinner_tbl" class="spinner" style="float:none;"></span>
+    </p>
+	
+    <div id="pmx_tabla_nuevos" class="pmx-table-wrap">
+      <em>Cargando…</em>
+    </div>
+	  
+    </div>
+
+
+<script>
+jQuery(function($){
+  const nonce = '<?php echo esc_js($nonce); ?>';
+  const $out  = $('#pmx_output');
+  const $sp   = $('#pmx_spinner');
+
+  // ---- NUEVO: control de bloqueo de botones de ejecución ----
+  const $btnNotify = $('#pmx_btn_notif');
+  const $btnTTL    = $('#pmx_btn_ttl');
+  const $btnExec   = $btnNotify.add($btnTTL);
+  let pmxBusy = false;
+
+  function setBusy(state){
+    pmxBusy = !!state;
+    $btnExec.prop('disabled', state).attr('aria-busy', state);
+    $btnExec.each(function(){
+      const $b = $(this);
+      if (state) {
+        if (!$b.data('orig-text')) $b.data('orig-text', $.trim($b.text()));
+        // conserva ancho para evitar “salto”
+        $b.css('min-width', $b.outerWidth());
+        $b.text('Ejecutando…').addClass('disabled');
+      } else {
+        const t = $b.data('orig-text') || $b.text();
+        $b.text(t).removeClass('disabled');
+        $b.css('min-width','');
+      }
+    });
+  }
+
+  function log(line){ $out.prepend(String(line)+'\n'); }
+
+  // ---- ENVOLTORIO AJAX con bloqueo/desbloqueo ----
+  function run(action, data){
+    if (pmxBusy) { log('• Ya hay un proceso en ejecución. Espera a que termine.'); return; }
+    setBusy(true);
+    $sp.addClass('is-active');
+
+    $.post(ajaxurl, $.extend({ action, _ajax_nonce: nonce }, data||{}))
+      .done(function(resp){
+        // LOG MÍNIMO: HTTP <código> · descripción
+        var code = (resp && resp.data && typeof resp.data.code !== 'undefined') ? resp.data.code : '—';
+        var desc = (resp && resp.data && (resp.data.desc || resp.data.title)) ? (resp.data.desc || resp.data.title) : (resp && resp.success ? 'OK' : 'Error');
+        $out.prepend('HTTP ' + code + ' · ' + desc + '\n');
+      })
+      .fail(function(xhr){
+        log('✘ HTTP '+xhr.status+': '+xhr.statusText);
+      })
+      .always(function(){
+        $sp.removeClass('is-active');
+        setBusy(false);
+      });
+  }
+
+  // ---- Handlers ----
+  $('#pmx_btn_notif').on('click', function(e){
+    e.preventDefault();
+    run('pmx_run_proceso_nuevos', { value: $('#pmx_value').val() });
+  });
+
+  $('#pmx_btn_ttl').on('click', function(e){
+    e.preventDefault();
+    run('pmx_run_ttl_nuevos', {});
+
+    // refrescos extra (no dependen del bloqueo)
+    setTimeout(loadTabla, 700); // sube a 1200ms si tu endpoint tarda en persistir
+    setTimeout(function(){
+      $.post(ajaxurl, { action:'pmx_count_proyectos_nuevos', _ajax_nonce: nonce })
+        .done(function(r){
+          if(r && r.success){
+            var n = r.data.count;
+            jQuery('.awaiting-mod .pending-count').text(n);
+          }
+        });
+    }, 800);
+  });
+
+  // ------- TABLA "Nuevos" (sin cambios funcionales) -------
+  const $spTbl = $('#pmx_spinner_tbl');
+  function loadTabla(){
+    $spTbl.addClass('is-active');
+    $.post(ajaxurl, {
+      action: 'pmx_list_proyectos_nuevos',
+      _ajax_nonce: nonce,
+      ttl_value: $('#pmx_ttl_view').val() // <-- PASA TTL de la tabla (10h, 30m, 3600s)
+    })
+      .done(function(resp){
+        if(resp && resp.success){
+          $('#pmx_tabla_nuevos').html(resp.data.html);
+        }else{
+          $('#pmx_tabla_nuevos').html('<div class="notice notice-error"><p>Error al cargar la tabla.</p></div>');
+        }
+      })
+      .fail(function(xhr){
+        $('#pmx_tabla_nuevos').html('<div class="notice notice-error"><p>HTTP '+xhr.status+': '+xhr.statusText+'</p></div>');
+      })
+      .always(function(){ $spTbl.removeClass('is-active'); });
+  }
+  // carga inicial y botón
+  loadTabla();
+  $('#pmx_btn_refresh_tabla').on('click', function(e){ e.preventDefault(); loadTabla(); });
+
+  // --- AUTOREFRESCO DEL GLOBO ---
+  pmxRefreshBubbles(); // primer fetch inmediato
+  if (!window.pmxBubbleTimer) {              // evita crear múltiples timers
+    window.pmxBubbleTimer = setInterval(pmxRefreshBubbles, 30000); // cada 30s
+  }
+  // --- AUTOREFRESCO DE LA TABLA (en “tiempo real”) ---
+  if (!window.pmxTableTimer) {
+    window.pmxTableTimer = setInterval(loadTabla, 30000); // refresca cada 30s
+  }
+
+  /* --- Fallback por si ajaxurl no está definido --- */
+  if (typeof window.ajaxurl === 'undefined') {
+    window.ajaxurl = '<?php echo admin_url('admin-ajax.php'); ?>';
+  }
+
+  /* --- Helpers para actualizar los globos del menú --- */
+  function pmxSetBubble($anchor, n){
+    var $b = $anchor.find('.awaiting-mod');
+    if (n > 0) {
+      if ($b.length) {
+        $b.removeClass(function(i, cls){ return (cls.match(/count-\d+/g)||[]).join(' '); })
+          .addClass('count-'+n)
+          .find('.pending-count').text(n);
+      } else {
+        $anchor.append(' <span class="awaiting-mod count-'+n+'"><span class="pending-count">'+n+'</span></span>');
+      }
+    } else {
+      $b.remove();
+    }
+  }
+
+  function pmxRefreshBubbles(){
+    $.post(ajaxurl, { action:'pmx_count_proyectos_nuevos', _ajax_nonce: nonce })
+      .done(function(r){
+        if (r && r.success){
+          var n = parseInt(r.data.count, 10) || 0;
+          // Padre: Notificaciones de Usuarios
+          var $parentA  = $('#toplevel_page_notification-back-mail-plugin > a .wp-menu-name');
+          pmxSetBubble($parentA, n);
+          // Submenú: Proceso Proyectos Nuevos
+          var $subA = $('#toplevel_page_notification-back-mail-plugin')
+                        .find('.wp-submenu a[href$="page=pmx-proceso-proyectos-nuevos"]');
+          pmxSetBubble($subA, n);
+        }
+      });
+  }
+});
+</script>
+
+    <?php
+}
+
+
+/** AJAX: Ejecuta proceso de notificación de proyectos nuevos */
+add_action('wp_ajax_pmx_run_proceso_nuevos', function(){
+    check_ajax_referer('pmx_proc_nuevos');
+    if ( ! current_user_can('manage_options') ) {
+        wp_send_json_error('Sin permisos', 403);
+    }
+
+    // value= ventana de tiempo (tu flujo actual usa 3)
+    $value = isset($_POST['value']) ? sanitize_text_field($_POST['value']) : '3';
+
+    $url = add_query_arg('value', $value, home_url('/proceso-notificacion-diario-de-proyectos-nuevos/'));
+	
+	// Dentro de pmx_run_proceso_nuevos, después de construir $url:
+$url = add_query_arg('pmx_token', pmx_proc_issue_token(90), $url);
+
+
+    $resp = wp_remote_get($url, array(
+        'timeout'     => 90,
+        'redirection' => 10,
+        'sslverify'   => false, // si tuvieras certificado auto-firmado (como en 172.27.x.x)
+    ));
+
+    if (is_wp_error($resp)) {
+        wp_send_json_error($resp->get_error_message(), 500);
+    }
+
+    $code = (int) wp_remote_retrieve_response_code($resp);
+    $body = wp_remote_retrieve_body($resp);
+    $snip = trim( wp_strip_all_tags($body) );
+    if (strlen($snip) > 1400) { $snip = substr($snip, 0, 1400).'…'; }
+
+    wp_send_json_success(array(
+        'title' => 'Notificación ejecutada: value=' . $value,
+        'code'  => $code,
+        'body'  => $snip,
+        'url'   => esc_url_raw($url),
+		'desc' => 'Notificación ejecutada (value='.$value.')', // ADD
+    ));
+});
+
+
+/** AJAX: Ejecuta proceso TTL de proyectos nuevos */
+add_action('wp_ajax_pmx_run_ttl_nuevos', function(){
+    check_ajax_referer('pmx_proc_nuevos');
+    if ( ! current_user_can('manage_options') ) {
+        wp_send_json_error('Sin permisos', 403);
+    }
+
+    $url = home_url('/proceso-ttl-proyectos-nuevos/');
+	
+	// Dentro de pmx_run_proceso_nuevos, después de construir $url:
+$url = add_query_arg('pmx_token', pmx_proc_issue_token(90), $url);
+
+
+    $resp = wp_remote_get($url, array(
+        'timeout'     => 90,
+        'redirection' => 10,
+        'sslverify'   => false,
+    ));
+
+    if (is_wp_error($resp)) {
+        wp_send_json_error($resp->get_error_message(), 500);
+    }
+
+    $code = (int) wp_remote_retrieve_response_code($resp);
+    $body = wp_remote_retrieve_body($resp);
+    $snip = trim( wp_strip_all_tags($body) );
+    if (strlen($snip) > 1400) { $snip = substr($snip, 0, 1400).'…'; }
+
+    wp_send_json_success(array(
+        'title' => 'TTL ejecutado',
+        'code'  => $code,
+        'body'  => $snip,
+        'url'   => esc_url_raw($url),
+		'desc' => 'TTL recalculado', // ADD
+    ));
+});
+
+//ajax tabla 
+
+// zona horaria para la tabla 
+
+// Formatea timestamps en la zona "México Centro"
+// Formatea timestamps en "Ciudad de México", corrigiendo si el tzdata aplica DST por error derivado del servidor.
+if (!function_exists('pmx_fmt_mx')) {
+  function pmx_fmt_mx($ts, $format = 'Y-m-d H:i') {
+    $ts = (int)$ts;
+    if ($ts <= 0) return '—';
+
+    $tzMx = new DateTimeZone('America/Mexico_City');
+    $dt   = new DateTime('@'.$ts);   // '@' => epoch UTC
+    $dt->setTimezone($tzMx);
+
+    // Si el offset es -18000 (UTC-5), el tzdata del sistema está desactualizado.
+    // Fallback a offset fijo UTC-6 sin DST.
+    if ($dt->getOffset() === -18000) { // -5h
+      $tzFixed = new DateTimeZone('Etc/GMT+6'); // ¡ojo! GMT+6 ≡ UTC-6
+      $dt->setTimezone($tzFixed);
+    }
+
+    return $dt->format($format);
+  }
+}
+
+
+
+/**
+ * Devuelve tabla HTML con proyectos marcados como "Nuevos".
+ * Soporta varias claves meta (flag) y/o TTL (fecha/hora de expiración).
+ */
+add_action('wp_ajax_pmx_list_proyectos_nuevos', function () {
+    check_ajax_referer('pmx_proc_nuevos');
+    if ( ! current_user_can('manage_options') ) {
+        wp_send_json_error('Sin permisos', 403);
+    }
+
+    // ADD: helper para parsear "10h", "30m", "3600s" → segundos
+    if (!function_exists('pmx_parse_ttl_like')) {
+      function pmx_parse_ttl_like($raw) {
+        $raw = trim((string)$raw);
+        if ($raw === '') return null;
+        if (preg_match('/^\s*(\d+(?:\.\d+)?)\s*([smhd]?)\s*$/i', $raw, $m)) {
+          $num = (float)$m[1];
+          $u   = strtolower(isset($m[2]) ? $m[2] : '');
+          $factor = ($u==='s') ? 1 : (($u==='h') ? 3600 : (($u==='d') ? 86400 : 60)); // default minutos
+          return (int) round($num * $factor);
+        }
+        return null;
+      }
+    }
+
+    // ADD: TTL para la tabla (prioridad: ttl_value UI -> constante -> 1800)
+    $ttl_from_ui = isset($_POST['ttl_value']) ? sanitize_text_field($_POST['ttl_value']) : '';
+    $__pmx_ttl_table = pmx_parse_ttl_like($ttl_from_ui);
+    if (! $__pmx_ttl_table || $__pmx_ttl_table <= 0) {
+      $__pmx_ttl_table = defined('PMX_NUEVO_TTL') ? (int) PMX_NUEVO_TTL : 1800;
+    }
+
+    // Ajusta el CPT si el tuyo se llama distinto
+    $post_type = apply_filters('pmx_new_projects_post_type', 'proyecto_inversion');
+
+    // Claves meta que significan "nuevo = true"
+    $flag_keys = apply_filters('pmx_new_project_flag_keys', array(
+        'proyecto_nuevo', 'nuevo', 'pmx_nuevo', 'pmx_proyecto_nuevo',
+    ));
+
+    // Claves meta que guardan "nuevo hasta" (timestamp o fecha parseable)
+    $until_keys = apply_filters('pmx_new_project_until_keys', array(
+        'pmx_nuevo_until', '_pmx_nuevo_until', 'nuevo_hasta', 'pmx_ttl_nuevo', 'pmx_nuevo_expira',
+    ));
+
+    // Construye meta_query (OR): o está el flag en true, o el TTL aún no vence
+    $meta_or = array('relation' => 'OR');
+
+    // Cualquier flag "truthy"
+    foreach ($flag_keys as $k) {
+        $meta_or[] = array(
+            'key'     => $k,
+            'value'   => array('1', 1, true, 'true', 'on', 'yes'),
+            'compare' => 'IN',
+        );
+    }
+
+    // TTL mayor o igual a "ahora"
+    $now = time();
+    foreach ($until_keys as $k) {
+        $meta_or[] = array(
+            'key'     => $k,
+            'value'   => $now,
+            'compare' => '>=',
+            'type'    => 'NUMERIC', // si guardas timestamp numérico
+        );
+    }
+	
+	//foreach ($until_keys as $k) {
+    //$meta_or[] = array(
+     //   'key'     => $k,
+     //   'compare' => 'EXISTS',
+    //);
+//}
+
+    $q = new WP_Query(array(
+        'post_type'      => $post_type,
+        'post_status'    => 'publish',
+        'posts_per_page' => 200,
+        'orderby'        => 'date',
+        'order'          => 'DESC',
+        'meta_query'     => $meta_or,
+        'no_found_rows'  => true,
+    ));
+
+    $total = (int) $q->post_count;
+
+    // --- estilos y leyenda para colores ---
+    $html  = '<style>
+      .pmx-badge{display:inline-block;padding:2px 8px;border-radius:999px;color:#fff;font-weight:600;font-size:12px;line-height:1;}
+      .pmx-ok{background:#1a7f37;}      /* verde */
+      .pmx-warn{background:#b58100;}    /* amarillo/ámbar */
+      .pmx-exp{background:#c62828;}     /* rojo */
+      .pmx-row-expired td{background:#fff4f4;}
+    </style>';
+    $html .= '<p style="margin:6px 0 10px 0;">
+      <span class="pmx-badge pmx-ok">Vigente</span>
+      <span class="pmx-badge pmx-warn" style="margin-left:6px;">Casi vence</span>
+      <span class="pmx-badge pmx-exp" style="margin-left:6px;">Vencido</span>
+    </p>';
+
+    // Render tabla
+    $html .= '<table class="widefat fixed striped">';
+    $html .= '<thead><tr>';
+    $html .= '<th width="70">ID</th>';
+    $html .= '<th>Título</th>';
+    $html .= '<th width="110">Estado</th>';
+    $html .= '<th width="130">Flag nuevo</th>';
+    $html .= '<th width="110">Vigencia</th>'; // NUEVA col con color
+    $html .= '<th width="170">Marcado</th>';
+    $html .= '<th width="170">Expira</th>';
+    $html .= '<th width="80">Ver</th>';
+    $html .= '<th width="80">Editar</th>';
+    $html .= '</tr></thead><tbody>';
+	$html .= '<p><strong>Total:</strong> '.esc_html($total).'</p>';
+
+    if ($total === 0) {
+        $html .= '<tr><td colspan="9"><em>No hay proyectos marcados como “Nuevos”.</em></td></tr>';
+    } else {
+        while ($q->have_posts()) { $q->the_post();
+            $pid   = get_the_ID();
+            $title = get_the_title();
+            $st    = get_post_status($pid);
+
+            // Lee la primera clave flag "verdadera" para mostrar cuál activó
+            $flag_show = '—';
+            foreach ($flag_keys as $k) {
+                $v = get_post_meta($pid, $k, true);
+                if (!empty($v) && $v !== '0' && $v !== 0) { $flag_show = esc_html($k); break; }
+            }
+
+            // Obtén "nuevo hasta" (el primer meta válido)
+            $nuevo_hasta_ts = null; $nuevo_hasta_key = null;
+            foreach ($until_keys as $k) {
+                $v = get_post_meta($pid, $k, true);
+                if ($v === '' || $v === null) continue;
+                if (is_numeric($v))       { $t = (int)$v; }
+                else                      { $t = strtotime((string)$v); }
+                if ($t && $t > 0) { $nuevo_hasta_ts = $t; $nuevo_hasta_key = $k; break; }
+            }
+
+            // leer 'nuevo_marked_at' y normalizar a epoch (10s/13ms/ISO)
+            $marked_ts = null;
+            $mv = get_post_meta($pid, 'nuevo_marked_at', true);
+            if ($mv !== '' && $mv !== null) {
+              if (is_numeric($mv)) {
+                $s = (string)$mv;
+                $marked_ts = (strlen($s) >= 13) ? (int) floor(((int)$mv)/1000) : (int)$mv;
+              } else {
+                $tt = strtotime((string)$mv);
+                if ($tt) $marked_ts = $tt;
+              }
+            }
+
+            // expira = meta “hasta” (si existe)  ó  (marked_at + TTL tabla)
+            $exp_ts = $nuevo_hasta_ts ? $nuevo_hasta_ts : (($marked_ts && $__pmx_ttl_table) ? $marked_ts + $__pmx_ttl_table : null);
+
+            // textos en zona horaria del sitio
+            //$marked_txt = $marked_ts ? ( function_exists('wp_date') ? wp_date('Y-m-d H:i', $marked_ts) : date_i18n('Y-m-d H:i', $marked_ts, true) ) : '—';
+            //$exp_txt = $exp_ts ? ( function_exists('wp_date') ? wp_date('Y-m-d H:i', $exp_ts) : date_i18n('Y-m-d H:i', $exp_ts, true) ) : '—';
+			
+			$marked_txt = pmx_fmt_mx($marked_ts);
+			$exp_txt    = pmx_fmt_mx($exp_ts);
+
+
+            // --- Cálculo de vigencia y color ---
+            $badge = '<span class="pmx-badge pmx-exp">Vencido</span>';
+            $rowcls = '';
+            if ($exp_ts && $exp_ts > time()) {
+              $remaining = $exp_ts - time();
+              // umbral “casi vencido”: último 10% del TTL (mínimo 60s)
+              $warn_threshold = max(60, (int)round($__pmx_ttl_table * 0.10));
+              if ($remaining <= $warn_threshold) {
+                $badge = '<span class="pmx-badge pmx-warn">Casi vence</span>';
+              } else {
+                $badge = '<span class="pmx-badge pmx-ok">Vigente</span>';
+              }
+            } else {
+              $rowcls = 'pmx-row-expired';
+            }
+
+            $html .= '<tr class="'.esc_attr($rowcls).'">';
+            $html .= '<td>'.esc_html($pid).'</td>';
+            $html .= '<td>'.esc_html($title).'</td>';
+            $html .= '<td>'.esc_html($st).'</td>';
+            $html .= '<td>'.esc_html($flag_show).'</td>';
+            $html .= '<td>'.$badge.'</td>'; // badge de color
+            $html .= '<td>'.esc_html($marked_txt).'</td>';
+            $html .= '<td>'.esc_html($exp_txt).'</td>';
+            $html .= '<td><a href="'.esc_url(get_permalink($pid)).'" target="_blank">Ver</a></td>';
+            $html .= '<td><a href="'.esc_url(get_edit_post_link($pid)).'" target="_blank">Editar</a></td>';
+            $html .= '</tr>';
+        }
+        wp_reset_postdata();
+    }
+
+    $html .= '</tbody></table>';
+    
+
+    wp_send_json_success(array('html' => $html));
+});
+
+
+//globo de Notificacion
+
+/* ================== BURBUJAS DE CONTADOR EN MENÚ ================== */
+
+/** Cuenta proyectos marcados como “Nuevos” (flag o TTL numérico activo). */
+if (!function_exists('pmx_count_proyectos_nuevos')) {
+  function pmx_count_proyectos_nuevos(){
+    $post_type = apply_filters('pmx_new_projects_post_type', 'proyecto_inversion');
+
+    $flag_keys = apply_filters('pmx_new_project_flag_keys', array(
+      'proyecto_nuevo','nuevo','pmx_nuevo','pmx_proyecto_nuevo',
+    ));
+    $until_keys = apply_filters('pmx_new_project_until_keys', array(
+      'pmx_nuevo_until','_pmx_nuevo_until','nuevo_hasta','pmx_ttl_nuevo','pmx_nuevo_expira',
+    ));
+
+    $now     = time();
+    $meta_or = array('relation' => 'OR');
+
+    foreach ($flag_keys as $k) {
+      $meta_or[] = array(
+        'key'     => $k,
+        'value'   => array('1',1,true,'true','on','yes'),
+        'compare' => 'IN',
+      );
+    }
+    foreach ($until_keys as $k) {
+      $meta_or[] = array(
+        'key'     => $k,
+        'value'   => $now,
+        'compare' => '>=',
+        'type'    => 'NUMERIC',
+      );
+    }
+
+    // Usamos found_posts sin traer todos los posts
+    $q = new WP_Query(array(
+      'post_type'      => $post_type,
+      'post_status'    => 'publish',
+      'fields'         => 'ids',
+      'posts_per_page' => 1,       // sólo 1, pero contamos con found_posts
+      'no_found_rows'  => false,   // IMPORTANTE para obtener found_posts
+      'meta_query'     => $meta_or,
+    ));
+
+    return (int) $q->found_posts;
+  }
+}
+
+/** Inserta burbujas en el menú padre y en el submenú "Proceso Proyectos Nuevos". */
+add_action('admin_menu', function(){
+  global $menu, $submenu;
+
+  // Slugs de tu menú
+  $PARENT = 'notification-back-mail-plugin';
+  $SUB    = 'pmx-proceso-proyectos-nuevos';
+
+  $count = pmx_count_proyectos_nuevos();
+  if ($count <= 0) return;
+
+  // Burbuja tipo "comentarios" (roja)
+  $bubble = ' <span class="awaiting-mod count-'.intval($count).'"><span class="pending-count">'. number_format_i18n($count) .'</span></span>';
+
+  // 1) Menú padre
+  if (is_array($menu)) {
+    foreach ($menu as $i => $m) {
+      if (isset($m[2]) && $m[2] === $PARENT) {
+        $menu[$i][0] .= $bubble;
+        break;
+      }
+    }
+  }
+
+  // 2) Submenú "Proceso Proyectos Nuevos"
+  if (isset($submenu[$PARENT]) && is_array($submenu[$PARENT])) {
+    foreach ($submenu[$PARENT] as $j => $sm) {
+      if (isset($sm[2]) && $sm[2] === $SUB) {
+        $submenu[$PARENT][$j][0] .= $bubble;
+        break;
+      }
+    }
+  }
+}, 999);
+
+
+// actualiza globo
+add_action('wp_ajax_pmx_count_proyectos_nuevos', function(){
+  check_ajax_referer('pmx_proc_nuevos');
+  if (!current_user_can('manage_options')) wp_send_json_error('Sin permisos', 403);
+  wp_send_json_success(array('count' => pmx_count_proyectos_nuevos()));
+});
+
+
+
+//restrinccion de las paginas como publicadas
+//codigo que genera un token para los botones de notificaciones y ttl a travez de ajax  para usuarios logueados con permisos admin  para permirir la ejecucion de los procesos
+//si no se tiene token y si no esta logueado como admin y se intenta ejecutar con url, manda un mensaje de permiso denegado
+
+// Genera un token temporal (1 uso) para disparar los procesos desde AJAX de los botones
+if (!function_exists('pmx_proc_issue_token')) {
+  function pmx_proc_issue_token($ttl = 90){ // segundos de validez del token
+    $tok = wp_generate_password(20, false, false); //crear token , longitud del password, caracteres especiales , otracaracteres especiales
+    set_transient('pmx_proc_token_'.$tok, 1, $ttl); // token + solo se usara una vez +cadcidad del token
+    return $tok;
+  }
+}
+
+// Restringe acceso a las páginas de procesos: sólo admin logueado o requests con token válido
+add_action('template_redirect', function () {
+  if (!is_page()) return;
+
+  $slugs_protegidos = array( // colocamos los slug de las paginas a bloquear
+    'proceso-notificacion-diario-de-proyectos-nuevos',
+    'proceso-ttl-proyectos-nuevos',
+  );
+
+
+// código de bloqueo cuando sí estamos justo en una de las páginas de proceso que estan protegidas. Así no afectas al resto del sitio.
+  $obj = get_queried_object();
+  if (empty($obj) || empty($obj->post_name) || !in_array($obj->post_name, $slugs_protegidos, true)) {
+    return;
+  }
+
+  // no indexar
+  header('X-Robots-Tag: noindex, nofollow', true);
+  nocache_headers();
+
+  // 1) Admin logueado con permisos: pasa
+  if (is_user_logged_in() && current_user_can('manage_options')) { // son los permisos que se dio igual al crear el submenu
+    return;
+  }
+
+  // 2) Petición con token válido (desde  botones AJAX): pasa y quita el token (one-shot)
+  $tok = isset($_GET['pmx_token']) ? sanitize_text_field($_GET['pmx_token']) : '';
+  if ($tok && get_transient('pmx_proc_token_'.$tok)) {
+    delete_transient('pmx_proc_token_'.$tok);
+    return;
+  }
+
+  // Si no cumple, bloquear
+  status_header(403);
+  exit('403 Sin Permisos, esto es una prueba de bloque por token');
+}, 0);
+
+// ---- LOG de tokens (emisión/consumo/llamada) ----
+if (!function_exists('pmx_token_log')) {
+  function pmx_token_log($stage, $tok, array $extra = []) {
+    $uid = function_exists('get_current_user_id') ? get_current_user_id() : 0;
+    $ip  = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '-';
+    $mask = substr($tok, 0, 4).'…'.substr($tok, -4); // enmascarado seguro
+
+    // Construye línea
+    $line = sprintf(
+      '[PMX][TOKEN][%s] uid=%s ip=%s token=%s %s',
+      strtoupper($stage),
+      $uid,
+      $ip,
+      $mask,
+      $extra ? json_encode($extra, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE) : ''
+    );
+
+    // Opción 1: a wp-content/debug.log si WP_DEBUG_LOG=true
+    if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+      error_log($line);
+    } else {
+      // Opción 2 (fallback): log PHP del servidor
+      error_log($line);
+    }
+
+    // Opción 3: log dedicado (descomenta si quieres tu archivo propio)
+    // error_log($line.PHP_EOL, 3, WP_CONTENT_DIR.'/pmx-tokens.log');
+  }
+}
+
+
+
+
 
 /////////////////////// ADMIN SECTION
 
@@ -3222,11 +4037,22 @@ function construct_custom_post($str, $date)
         $and .= " AND (monto_in.meta_value = '' OR monto_in.meta_value REGEXP '[^a-zA-Z0-9]' OR (moneda.meta_value = 1872 AND replace(monto_in.meta_value,',','')+1-1 BETWEEN $monto_min_mxn AND $monto_max_mxn) OR (moneda.meta_value = 1981 AND replace(monto_in.meta_value,',','')+1-1 BETWEEN $monto_min_usa AND $monto_max_usa)) ";
     }
     
-    // Proyectos Nuevos
+    // //
     // Consideramos solo los proyectos modificados evitandos los nuevos
-    $join .= " INNER JOIN wp_postmeta AS n ON (wp_posts.ID = n.post_id AND n.meta_key='nuevo') ";
-    $where .= " AND n.meta_value=0 OR (n.meta_value=1 AND wp_posts.ID NOT IN (select follow from wp_bancomext_users_reports WHERE email = '$str' AND proceso = 'proyectos_nuevos'))";
+    // viejo $join .= " INNER JOIN wp_postmeta AS n ON (wp_posts.ID = n.post_id AND n.meta_key='nuevo') ";
+    // viejo $where .= " AND n.meta_value=0 OR (n.meta_value=1 AND wp_posts.ID NOT IN (select follow from wp_bancomext_users_reports WHERE email = '$str' AND proceso = 'proyectos_nuevos'))";
+	
+	// Proyectos Nuevos
+    // Consideramos solo los proyectos modificados evitandos los nuevos
+    // v1.1 $join .= " INNER JOIN wp_postmeta AS n ON (wp_posts.ID = n.post_id AND n.meta_key='nuevo') ";
+    // v1.1 $and .= " AND (n.meta_value=0 OR (n.meta_value=1 AND wp_posts.ID NOT IN (select follow from wp_bancomext_users_reports WHERE email = '$str' AND proceso = '".PMX_PROCESO_NUEVOS."' AND status='ENVIADO')))";
     
+	
+	// Proyectos Nuevos
+    // Consideramos solo los proyectos modificados que no sean nuevos
+    $join .= " INNER JOIN wp_postmeta AS n ON (wp_posts.ID = n.post_id AND n.meta_key='nuevo') ";
+    $and  .= " AND n.meta_value=0 ";
+	
     //error_log('------------- llegamos a los montos ----------'.var_export($and, true));
     // GROUP AND ORDER
     $group  = ' GROUP BY wp_posts.ID ORDER BY wp_posts.post_title, wp_posts.post_date DESC ';
@@ -3864,6 +4690,62 @@ if (!function_exists('pmx_to_display_locale')) {
   }
 }
 
+// helper para insertar titulo de proyecto wp_bancomext_users_reports
+// Construye "12345 - <a href='...'>Título</a>" respetando idioma (Polylang y/o meta EN)
+// Construye "12345 - <a href='...'>Título</a>" respetando idioma (Polylang y/o meta EN)
+// y fuerza ?languaje=en cuando el idioma sea inglés.
+if (!function_exists('pmx_report_follow_text')) {
+  function pmx_report_follow_text($pid, $idioma='es_MX'){
+    $pid = (int)$pid;
+    if ($pid <= 0) return (string)$pid;
+
+    // es_MX | en_US -> es | en
+    $lang = (stripos((string)$idioma, 'en') !== false) ? 'en' : 'es';
+
+    // Si hay Polylang, mapa al post del idioma solicitado
+    $post_id = $pid;
+    if (function_exists('pll_get_post')) {
+      $tr = pll_get_post($pid, $lang);
+      if ($tr) { $post_id = (int)$tr; }
+    }
+
+    // Título: intenta el del post del idioma, luego el original
+    $title = get_the_title($post_id);
+    if (!$title) { $title = get_the_title($pid); }
+
+    // Fallback EN por meta
+    if ($lang === 'en') {
+      $meta_en = get_post_meta($post_id, 'nombre_oficial_ingles', true);
+      if (!empty($meta_en)) { $title = $meta_en; }
+    }
+
+    // URL del post (del idioma si existe)
+    $url = get_permalink($post_id);
+    if (!$url) { $url = get_permalink($pid); }
+
+    // --- Forzar query ?languaje=en cuando esté en inglés --- correccion ya que en el reporte de notificaciones no se visualizaba la url en el idioma correcto con ?language=en
+    // (Eliminamos posibles params previos similares para no duplicar)
+    if ($lang === 'en') {
+      $url = remove_query_arg(array('languaje','language','lang'), $url);
+      $url = add_query_arg('languaje', 'en', $url);
+    } else {
+      // En español dejamos la URL limpia (sin param). Si quieres forzar ?languaje=es,
+      // descomenta las dos líneas de abajo:
+      $url = remove_query_arg(array('languaje','language','lang'), $url);
+      $url = add_query_arg('languaje', 'es', $url);
+    }
+
+    // Escapes mínimos
+    $url   = esc_url($url);
+    $title = esc_html($title);
+
+    return $pid.' - <a href="'.$url.'" target="_blank" rel="noopener">'.$title.'</a>';
+  }
+}
+
+
+
+
 /* ============================================================
  * Helper: guardar reporte en wp_bancomext_users_reports
  *  - Inserta una fila por cada ID detectado en $follow
@@ -3885,19 +4767,18 @@ if (!function_exists('pmx_log_db_report')) {
 
     $table   = $wpdb->prefix . 'bancomext_users_reports';
     $email   = substr((string)$email, 0, 50);
-    $idioma  = pmx_to_display_locale($idioma);  // <<< aquí forzamos es_MX | en_US
+    $idioma  = pmx_to_display_locale($idioma);  // es_MX | en_US
     $proceso = (string)$proceso;
     $status  = (string)$status;
 
     /* ---------- 1) Extraer SOLO IDs permitidos ---------- */
     $ids = array();
+    $src = $follow;
 
     $take_ids_from_array = function($arr) {
-      // Caso A: arreglo con clave 'ids'
       if (is_array($arr) && isset($arr['ids']) && is_array($arr['ids'])) {
         $arr = $arr['ids'];
       }
-      // Caso B: arreglo plano con sólo números
       if (is_array($arr) && array_values($arr) === $arr) {
         $out = array();
         foreach ($arr as $v) {
@@ -3911,8 +4792,6 @@ if (!function_exists('pmx_log_db_report')) {
       return array();
     };
 
-    // Normalizar fuente
-    $src = $follow;
     if (is_object($src)) {
       $src = get_object_vars($src);
     }
@@ -3921,13 +4800,11 @@ if (!function_exists('pmx_log_db_report')) {
       $ids = $take_ids_from_array($src);
     } elseif (is_string($src)) {
       $s = trim($src);
-
-      // JSON válido -> tratar como arreglo
       $decoded = json_decode($s, true);
       if (json_last_error() === JSON_ERROR_NONE) {
         $ids = $take_ids_from_array($decoded);
+        $src = $decoded; // conservar por si trae inv_id
       } else {
-        // Aceptar SOLO formato "123,456,789"
         if (preg_match('/^\s*\d+(?:\s*,\s*\d+)*\s*$/', $s)) {
           $parts = preg_split('/\s*,\s*/', $s);
           $tmp = array();
@@ -3937,22 +4814,44 @@ if (!function_exists('pmx_log_db_report')) {
           }
           $ids = array_keys($tmp);
         } else {
-          $ids = array(); // cualquier otro string se ignora
+          $ids = array();
         }
       }
-    } else {
-      $ids = array();
+    } elseif (is_scalar($src) && preg_match('/^\d+$/', (string)$src)) {
+      $n = (int)$src;
+      if ($n > 0) $ids = array($n);
     }
 
-    /* ---------- 2) Si no hay IDs, NO insertes nada ---------- */
+    /* ---------- 1.b) Fallback: si no hay IDs, derivarlos por inv_id ---------- */
     if (empty($ids)) {
-      if (function_exists('pmx_log')) {
-        pmx_log('DB_LOG_SKIP (sin IDs) email='.$email.' proceso='.$proceso.' status='.$status.' idioma='.$idioma);
+      $inv_id = 0;
+      if (is_array($src) && isset($src['inv_id'])) {
+        $inv_id = (int)$src['inv_id'];
       }
-      return 0; // nada insertado
+      if ($inv_id > 0 && function_exists('obtener_proyectos_nuevos')) {
+        $ttl = defined('PMX_NUEVO_TTL') ? PMX_NUEVO_TTL : null;
+        $posts_match = obtener_proyectos_nuevos($inv_id, $ttl);
+
+        $tmp = array();
+        foreach ((array)$posts_match as $p) {
+          $pid = is_object($p) ? (int)$p->ID : (int)$p['ID'];
+          if ($pid > 0) { $tmp[$pid] = true; }
+        }
+
+        // Excluye ya enviados (ACF)
+        $enviados_acf = function_exists('get_field')
+          ? get_field('proyectos_nuevos_enviados', $inv_id)
+          : get_post_meta($inv_id, 'proyectos_nuevos_enviados', true);
+        if (!is_array($enviados_acf)) $enviados_acf = array();
+
+        $ids = array();
+        foreach (array_keys($tmp) as $pid) {
+          if (!in_array($pid, $enviados_acf, true)) $ids[] = $pid;
+        }
+      }
     }
 
-    /* ---------- 3) Fechas ---------- */
+    /* ---------- 2) Fechas ---------- */
     $fecha_legible = function_exists('date_i18n')
       ? date_i18n('Y-m-d H:i:s', current_time('timestamp'))
       : date('Y-m-d H:i:s');
@@ -3969,26 +4868,119 @@ if (!function_exists('pmx_log_db_report')) {
       'status'  => $status,
       'idioma'  => $idioma,
     );
+    // Mantenemos 7 formatos porque incluimos 'follow' al insertar/actualizar
     $format = array('%s','%s','%s','%s','%s','%s','%s');
 
-    /* ---------- 4) Insertar: una fila por cada ID ---------- */
-    $inserted = 0;
-    foreach ($ids as $one_id) {
-      $data = $base;
-      $data['follow'] = (string)$one_id; // SOLO el ID
-      $ok = $wpdb->insert($table, $data, $format);
-      if ($ok === false) {
-        if (function_exists('pmx_log')) {
-          pmx_log('DB_LOG_FAIL table='.$table.' id='.$one_id.' err='.$wpdb->last_error);
+    /* ---------- Utilidad: follow por ID o snippet ---------- */
+    $build_follow_text = function($ids_list, $idi) use ($follow) {
+      if (!empty($ids_list)) {
+        $chunks = array();
+        foreach ($ids_list as $one_id) {
+          $chunks[] = pmx_report_follow_text($one_id, $idi);
         }
-      } else {
-        $inserted++;
+        return implode(' | ', $chunks);
       }
+      $follow_str = '';
+      if (is_string($follow)) {
+        $tmp = trim($follow);
+        if ($tmp !== '') {
+          $tmp = function_exists('wp_strip_all_tags') ? wp_strip_all_tags($tmp) : strip_tags($tmp);
+          $follow_str = substr($tmp, 0, 255);
+        }
+      }
+      return $follow_str;
+    };
+
+    /* =========================================================
+     * 3) Upsert por PROYECTO cuando EMAIL_INVALIDO o ENVIADO
+     *    - EMAIL_INVALIDO: una fila por cada proyecto (sin duplicar)
+     *    - ENVIADO: actualiza esas filas a ENVIADO (misma clave por ID)
+     * ========================================================= */
+    if (($status === 'EMAIL_INVALIDO' || $status === 'ENVIADO') && !empty($ids)) {
+      $processed = 0;
+      foreach ($ids as $one_id) {
+        $follow_txt = pmx_report_follow_text($one_id, $idioma);
+
+        // localizar fila EMAIL_INVALIDO previa por el ID en 'follow'
+        $re = '(^|[^0-9])' . (int)$one_id . '([^0-9]|$)';
+        $existing = $wpdb->get_row(
+          $wpdb->prepare(
+            "SELECT ID FROM {$table}
+             WHERE proceso=%s AND status='EMAIL_INVALIDO' AND follow REGEXP %s
+             ORDER BY ID DESC LIMIT 1",
+            $proceso, $re
+          )
+        );
+
+        if ($status === 'EMAIL_INVALIDO') {
+          if ($existing) {
+            $upd = array(
+              'fecha'  => $fecha_legible,
+              'report' => $report_dt,
+              'idioma' => $idioma,
+              'follow' => $follow_txt,
+              'email'  => $email,
+            );
+            $wpdb->update($table, $upd, array('ID' => (int)$existing->ID), array('%s','%s','%s','%s','%s'), array('%d'));
+            $processed++;
+          } else {
+            $data = $base;
+            $data['follow'] = $follow_txt;
+            $ok = $wpdb->insert($table, $data, $format);
+            if ($ok !== false) $processed++;
+          }
+        } else { // ENVIADO
+          if ($existing) {
+            $upd = array(
+              'fecha'  => $fecha_legible,
+              'report' => $report_dt,
+              'idioma' => $idioma,
+              'status' => 'ENVIADO',
+              'follow' => $follow_txt,
+              'email'  => $email,
+            );
+            $wpdb->update($table, $upd, array('ID' => (int)$existing->ID), array('%s','%s','%s','%s','%s','%s'), array('%d'));
+            $processed++;
+          } else {
+            // no existía EMAIL_INVALIDO previo para ese proyecto -> inserta ENVIADO
+            $data = $base;
+            $data['status'] = 'ENVIADO';
+            $data['follow'] = $follow_txt;
+            $ok = $wpdb->insert($table, $data, $format);
+            if ($ok !== false) $processed++;
+          }
+        }
+      }
+      return $processed;
     }
 
-    return $inserted;
+    /* ---------- 4) Flujo normal: insertar por cada ID ---------- */
+    if (!empty($ids)) {
+      $inserted = 0;
+      foreach ($ids as $one_id) {
+        $data = $base;
+        $data['follow'] = pmx_report_follow_text($one_id, $idioma);
+        $ok = $wpdb->insert($table, $data, $format);
+        if ($ok !== false) $inserted++;
+        else if (function_exists('pmx_log')) pmx_log('DB_LOG_FAIL table='.$table.' id='.$one_id.' err='.$wpdb->last_error);
+      }
+      return $inserted;
+    }
+
+    /* ---------- 5) SIN IDs: registrar una sola fila ---------- */
+    $data = $base;
+    $data['follow'] = $build_follow_text(array(), $idioma);
+    $ok = $wpdb->insert($table, $data, $format);
+    if ($ok === false) {
+      if (function_exists('pmx_log')) pmx_log('DB_LOG_FAIL table='.$table.' (sin IDs) err='.$wpdb->last_error);
+      return 0;
+    }
+    return 1;
   }
 }
+
+
+
 
 
 
@@ -3999,7 +4991,7 @@ if (!function_exists('pmx_log_db_report')) {
  * - lang:   es_MX | en_US (normalizado SOLO para la columna)
  * - el link usa el idioma crudo es|en
  * ============================================================ */
-if (!function_exists('pmx_log_db_follow')) {
+/*if (!function_exists('pmx_log_db_follow')) {
   function pmx_log_db_follow($email, $pid, $lang='es') {
     global $wpdb;
     $table = $wpdb->prefix . 'bancomext_users';
@@ -4057,7 +5049,7 @@ if (!function_exists('pmx_log_db_follow')) {
     if (function_exists('pmx_log')) pmx_log('DB_FOLLOW ✅ insert pid='.$pid.' email='.$email.' lang='.$lang_disp.' (raw='.$lang_raw.')');
     return true;
   }
-}
+}*/
 
 
 
@@ -4573,6 +5565,50 @@ if (!function_exists('pmx_get_pref_subsector_ids')) {
   }
 }
 
+/* ====================== SUBSECTOR(ES) DEL PROYECTO ====================== */
+/* Devuelve SIEMPRE un arreglo de IDs (int) del ACF 'subsector_proyecto'.
+   Soporta: número simple, array/objeto, o strings tipo "123|Label". */
+if (!function_exists('pmx_get_project_subsector_ids')) {
+  function pmx_get_project_subsector_ids($pid) {
+    $val = function_exists('get_field')
+      ? get_field('subsector_proyecto', $pid)
+      : get_post_meta($pid, 'subsector_proyecto', true);
+
+    $bag = array(); // set de IDs
+    $collect = function($v) use (&$bag, &$collect) {
+      if ($v === null || $v === false || $v === '') return;
+
+      // array
+      if (is_array($v)) { foreach ($v as $e) $collect($e); return; }
+
+      // objeto con ID/value
+      if (is_object($v)) {
+        foreach (array('ID','id','value','term_id') as $k) {
+          if (isset($v->$k) && ctype_digit((string)$v->$k)) { $bag[(int)$v->$k] = true; }
+        }
+        return;
+      }
+
+      // número suelto
+      if (is_numeric($v)) { $bag[(int)$v] = true; return; }
+
+      // string "123|Label" o "123,456"
+      $s = trim((string)$v);
+      if ($s === '') return;
+      if (preg_match('/^\d+(?:\s*,\s*\d+)*$/', $s)) {
+        foreach (preg_split('/\s*,\s*/', $s) as $tok) $bag[(int)$tok] = true;
+        return;
+      }
+      if (preg_match('/^\s*(\d+)/', $s, $m)) { $bag[(int)$m[1]] = true; }
+    };
+
+    $collect($val);
+    $out = array_keys($bag);
+    sort($out, SORT_NUMERIC);
+    return $out;
+  }
+}
+
 
 
 /* =====================================================================
@@ -4735,16 +5771,39 @@ if (!function_exists('pmx_get_monto_usd')) {
 }
 
 
+
+
 /* ====== CONFIG ====== */
 if (!defined('PMX_NUEVO_TTL')) {
   // 30 minutos
-  define('PMX_NUEVO_TTL', 1800);
+  // define('PMX_NUEVO_TTL', 1800); //36000 10 horas
+   // Fallback SOLO si la página no pasa TTL (shortcode/URL)
+  define('PMX_NUEVO_TTL', 518400); // 6 dias 
 }
 if (!defined('PMX_NUEVO_META'))        define('PMX_NUEVO_META', 'nuevo');
 if (!defined('PMX_NUEVO_MARKED_META')) define('PMX_NUEVO_MARKED_META', 'nuevo_marked_at'); // epoch UTC
 
-/* ====== STAMP en guardado (UTC) ====== */
+
 if (!function_exists('pmx_stamp_nuevo_on_save')) {
+  function pmx_stamp_nuevo_on_save($post_id, $post, $update){
+    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
+    if ($post->post_type !== 'proyecto_inversion') return;
+
+    $val   = get_post_meta($post_id, PMX_NUEVO_META, true);
+    $is_on = ($val==='1'||$val===1||$val===true||$val==='true');
+
+    if ($is_on) {
+      $ts = (int) get_post_meta($post_id, PMX_NUEVO_MARKED_META, true);
+      if ($ts <= 0) pmx_set_stamp_guarded($post_id, current_time('timestamp', true)); // ✅
+    } else {
+      pmx_del_stamp_guarded($post_id);
+    }
+  }
+  add_action('save_post_proyecto_inversion','pmx_stamp_nuevo_on_save',20,3);
+}
+
+/* ====== STAMP en guardado (UTC) ====== */
+/*if (!function_exists('pmx_stamp_nuevo_on_save')) {
   function pmx_stamp_nuevo_on_save($post_id, $post, $update){
     if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
     if ($post->post_type !== 'proyecto_inversion') return;
@@ -4752,30 +5811,44 @@ if (!function_exists('pmx_stamp_nuevo_on_save')) {
     $val   = get_post_meta($post_id, PMX_NUEVO_META, true);
     $is_on = ($val==='1' || $val===1 || $val===true || $val==='true');
 
-    if ($is_on) {
-      $ts = (int) get_post_meta($post_id, PMX_NUEVO_MARKED_META, true);
-      if ($ts <= 0) {
-        $now = current_time('timestamp', true); // UTC
-        update_post_meta($post_id, PMX_NUEVO_MARKED_META, $now);
-        if (function_exists('pmx_log')) pmx_log('STAMP '.$post_id.' nuevo_marked_at='.gmdate('Y-m-d H:i:s',$now).' UTC');
-      }
-    } else {
-      delete_post_meta($post_id, PMX_NUEVO_MARKED_META);
-    }
+   if ($is_on) {
+  $ts = (int) get_post_meta($post_id, PMX_NUEVO_MARKED_META, true);
+  if ($ts <= 0) {
+    update_post_meta($post_id, PMX_NUEVO_MARKED_META, current_time('timestamp', true));
   }
-  add_action('save_post_proyecto_inversion','pmx_stamp_nuevo_on_save',20,3);
+} else {
+  delete_post_meta($post_id, PMX_NUEVO_MARKED_META);
 }
 
-/* (Opcional ACF) fuerza sello/borrado en UTC */
-add_filter('acf/update_value/name=nuevo', function($value, $post_id){
-  $is_on = ($value==='1' || $value===1 || $value===true || $value==='true');
-  if ($is_on) {
-    update_post_meta($post_id, PMX_NUEVO_MARKED_META, current_time('timestamp', true)); // UTC
-  } else {
-    delete_post_meta($post_id, PMX_NUEVO_MARKED_META);
   }
+  add_action('save_post_proyecto_inversion','pmx_stamp_nuevo_on_save',20,3);
+}*/
+
+if (!function_exists('pmx_boolish')) {
+  function pmx_boolish($v){ if (is_string($v)) $v = strtolower(trim($v));
+    return in_array($v, array('1',1,true,'true','on','yes','si','sí'), true);
+  }
+}
+
+add_filter('acf/update_value/name=nuevo', function($value, $post_id, $field){
+  $now_true = pmx_boolish($value);
+  $old_raw  = function_exists('get_field') ? get_field('nuevo', $post_id, false) : get_post_meta($post_id, 'nuevo', true);
+  $was_true = pmx_boolish($old_raw);
+
+  if ($now_true && !$was_true) {
+    // OFF -> ON: sellar SOLO si no hay stamp
+    $ts = (int) get_post_meta($post_id, PMX_NUEVO_MARKED_META, true);
+    if ($ts <= 0) pmx_set_stamp_guarded($post_id, current_time('timestamp', true)); // UTC
+  } elseif (!$now_true && $was_true) {
+    // ON -> OFF: limpiar
+    pmx_del_stamp_guarded($post_id);
+  }
+  // ON->ON u OFF->OFF: no tocar
   return $value;
-}, 20, 2);
+}, 20, 3);
+
+
+
 
 /* ====== BACKFILL (UTC) ====== */
 if (!function_exists('pmx_backfill_marked_at')) {
@@ -4835,70 +5908,6 @@ if (!function_exists('pmx_auto_unmark_expired_nuevos')) {
   }
 }
 
-/* ====== CRON cada 5 min ====== */
-add_filter('cron_schedules', function($s){
-  static $logged = false;
-  if (!isset($s['every5min'])) {
-    $s['every5min'] = array('interval'=>300, 'display'=>'Every 5 Minutes');
-  }
-  if (!$logged && function_exists('pmx_log')) { pmx_log('[CRON] Registered schedule every5min (300s)'); $logged=true; }
-  return $s;
-});
-
-/* Agenda/valida el evento en init */
-add_action('init', function(){
-  $hook = 'pmx_auto_unmark_nuevos_event';
-  $next = wp_next_scheduled($hook);
-
-  // Si no existe, o el schedule no es el correcto, reprograma
-  if (!$next || wp_get_schedule($hook) !== 'every5min') {
-    if ($next) {
-      // limpia futuras instancias del hook
-      $crons = _get_cron_array();
-      foreach ($crons as $ts => $events) {
-        if (isset($events[$hook])) wp_unschedule_event($ts, $hook, array());
-      }
-    }
-    wp_schedule_event(time()+60, 'every5min', $hook);
-    $next = wp_next_scheduled($hook);
-    if (function_exists('pmx_log')) pmx_log('[CRON] Scheduled '.$hook.' next='.gmdate('Y-m-d H:i:s',$next).' UTC');
-  } else {
-    if (function_exists('pmx_log')) pmx_log('[CRON] Already scheduled '.$hook.' next='.gmdate('Y-m-d H:i:s',$next).' UTC');
-  }
-});
-
-/* Callback del cron: cada 5 min */
-add_action('pmx_auto_unmark_nuevos_event', function(){
-  if (function_exists('pmx_log')) pmx_log('[CRON] TICK pmx_auto_unmark_nuevos_event START ttl='.PMX_NUEVO_TTL);
-  pmx_backfill_marked_at();
-  $expired = (int) pmx_auto_unmark_expired_nuevos(PMX_NUEVO_TTL);
-  $next = wp_next_scheduled('pmx_auto_unmark_nuevos_event');
-  if (function_exists('pmx_log')) pmx_log('[CRON] TICK END expired='.$expired.' | next='.($next?gmdate('Y-m-d H:i:s',$next).' UTC':'(not scheduled)'));
-});
-
-/* (Opcional) Trigger manual y reschedule via URL (solo admins) */
-add_action('init', function(){
-  if (!current_user_can('manage_options')) return;
-  if (isset($_GET['pmx_cron_test'])) {
-    if (function_exists('pmx_log')) pmx_log('[CRON] Manual trigger');
-    do_action('pmx_auto_unmark_nuevos_event');
-    wp_die('pmx_auto_unmark_nuevos_event ejecutado (ver log).');
-  }
-  if (isset($_GET['pmx_cron_reschedule'])) {
-    $hook = 'pmx_auto_unmark_nuevos_event';
-    $crons = _get_cron_array();
-    foreach ($crons as $ts => $events) {
-      if (isset($events[$hook])) wp_unschedule_event($ts, $hook, array());
-    }
-    wp_schedule_event(time()+60, 'every5min', $hook);
-    $next = wp_next_scheduled($hook);
-    if (function_exists('pmx_log')) pmx_log('[CRON] Re-scheduled '.$hook.' next='.gmdate('Y-m-d H:i:s',$next).' UTC');
-    wp_die('Re-scheduled (ver log).');
-  }
-});
-
-
-
 
 /* ============================================================
    OBTENER PROYECTOS NUEVOS
@@ -4942,11 +5951,15 @@ if (!function_exists('obtener_proyectos_nuevos')) {
     foreach ($q->posts as $p) {
       $pid=$p->ID; $tit=get_the_title($pid);
       $sec=pmx_get_acf_tokens($pid,'sector_proyecto');
+	  $sub=pmx_get_acf_tokens($pid,'subsector_proyecto');
       $tip=pmx_get_acf_tokens($pid,'tipo_de_proyecto');
       $eta=pmx_get_acf_tokens($pid,'etapa_proyecto');
       $inv=pmx_get_acf_tokens($pid,'tipo_de_inversion');
       $mon=pmx_get_monto_usd($pid);
-      pmx_log('  PID '.$pid.' | "'.$tit.'" | sector=['.pmx_join($sec).'] tipo=['.pmx_join($tip).'] etapa=['.pmx_join($eta).'] interes=['.pmx_join($inv).'] monto='.($mon===null?'(n/a)':$mon));
+      //pmx_log('  PID '.$pid.' | "'.$tit.'" | sector=['.pmx_join($sec).'] subsector=['.pmx_join($sub).'] tipo=['.pmx_join($tip).'] etapa=['.pmx_join($eta).'] interes=['.pmx_join($inv).'] monto='.($mon===null?'(n/a)':$mon));
+	  
+	  pmx_log('  PID '.$pid.' | "'.$tit.'" | sector=['.pmx_join($sec).'] subsector=['.pmx_join($sub).'] tipo=['.pmx_join($tip).'] etapa=['.pmx_join($eta).'] interes=['.pmx_join($inv).'] monto='.((trim((string)$mon)==='' || strcasecmp((string)$mon,'null')===0 || (is_numeric($mon) && (float)$mon==0.0))? '0': number_format((float)$mon, 0, '.', ',')));
+
     }
 
     $posts = $q->posts;
@@ -4964,7 +5977,7 @@ if (!function_exists('obtener_inversionistas_para_nuevos_proyectos')) {
   function obtener_inversionistas_para_nuevos_proyectos() {
     $args = array(
       'post_type'      => 'reg_inversionistas',
-      'post_status'    => array('draft','publish'),
+      'post_status'    => array('draft'),
       'posts_per_page' => -1,
       'meta_query'     => array(
         'relation' => 'OR',
@@ -5716,6 +6729,57 @@ if (!function_exists('pmx_pretty_etapas_es')) {
     }
 }
 
+// ligar Subsectores
+
+// Mapea códigos (1,2,12,...) a IDs reales del CPT 'catalogo_subsectores' buscando por título.
+add_filter('pmx_map_pref_subsectors_to_project_ids', function($codes, $inv_id){
+  // Tabla código -> título exacto del subsector (según tu CSV)
+  $code2title = array(
+    1  => 'Generación',
+    2  => 'Transmisión y Subestaciones',
+    12 => 'Comercialización',
+    3  => 'Exploración/Producción',
+    7  => 'Transporte / Almacenamiento / Distribución',
+    8  => 'Refinación / Tratamiento',
+    4  => 'Aeropuertos',
+    5  => 'Puertos',
+    6  => 'Ferrocarriles',
+    9  => 'Transporte Urbano',
+    10 => 'Mixto o Multimodal',
+    11 => 'Carreteras',
+  );
+
+  $ids = array();
+  foreach ((array)$codes as $c) {
+    $c = (int)$c;
+    if (!isset($code2title[$c])) continue;
+    $title = $code2title[$c];
+
+    // Busca por título dentro del CPT 'catalogo_subsectores'
+    $p = get_page_by_title($title, OBJECT, 'catalogo_subsectores');
+    if ($p && !is_wp_error($p)) {
+      $ids[$p->ID] = true;
+    } else {
+      // Fallback: búsqueda "like" por si hay pequeñas variaciones
+      $q = new WP_Query(array(
+        'post_type'      => 'catalogo_subsectores',
+        'posts_per_page' => 1,
+        's'              => $title,
+      ));
+      if ($q->have_posts()) {
+        $ids[$q->posts[0]->ID] = true;
+      }
+      wp_reset_postdata();
+    }
+  }
+
+  $out = array_keys($ids);
+  sort($out, SORT_NUMERIC);
+  if (function_exists('pmx_log')) pmx_log('[PREF_SUBSEC_MAP] codes=['.implode(',',$codes).'] -> ids=['.implode(',',$out).']');
+  return $out;
+}, 10, 2);
+
+
 /* ============================================================
    FILTRO por PREFERENCIAS (todo con labels)
    ============================================================ */
@@ -5745,12 +6809,13 @@ if (!function_exists('pmx_filtra_proyectos_por_preferencias')) {
     pmx_log('  Tipos:    '.($pref_tip_all ? '(TODOS)'  : '['.pmx_join($pref_tip).']'));
     pmx_log('  Etapas:   '.($pref_eta_all ? '(TODAS)'  : '['.pmx_join($pref_eta).']'));
     pmx_log('  Interés:  '.($pref_int_all ? '(TODOS)'  : '['.pmx_join($pref_int).']'));
+	
 
 
         // Subsectores
         $pref_subsec_ids = pmx_get_pref_subsector_ids($inv_id);
         //pmx_log('  Subsectors IDs: ['.implode(',', $pref_subsec_ids).']');
-        pmx_log('  Subsectores: (OMITIDO EN FILTRO) IDs=['.implode(',', $pref_subsec_ids).']');
+        //pmx_log('  Subsectores: (OMITIDO EN FILTRO) IDs=['.implode(',', $pref_subsec_ids).']');
 
 
         // --- DEBUG ACF (opcional, lo dejas como lo tenías)
@@ -5768,7 +6833,7 @@ if (!function_exists('pmx_filtra_proyectos_por_preferencias')) {
         $int_all = pmx_pref_axis_is_all($inv_id, 'interes_en_proyectos_reg_inversionista');
 
         if ($tip_all) { pmx_log('[PREF][TIPO] "Todos" detectado -> no filtra tipos');   $pref_tip = array(); }
-        if ($eta_all) { pmx_log('[PREF][ETAPA] "Todos" detectado -> no filtra etapas');  $pref_eta = array(); }
+        if ($eta_all) { pmx_log('[PREF][ETAPA] "Todas" detectado -> no filtra etapas');  $pref_eta = array(); }
         if ($int_all) { pmx_log('[PREF][INTERES] "Todos" detectado -> no filtra interés'); $pref_int = array(); }
 
         // Monto pref
@@ -5800,38 +6865,62 @@ if (!function_exists('pmx_filtra_proyectos_por_preferencias')) {
             $tip = pmx_get_acf_tokens($pid,'tipo_de_proyecto');
             $eta = pmx_etapas_canonize( pmx_get_acf_tokens($pid,'etapa_proyecto') );
             $inv = pmx_get_acf_tokens($pid,'tipo_de_inversion');
-            $mon = pmx_get_monto_usd($pid);
+            $mon = pmx_get_monto_usd($pid); //arreglo
 
             // Subsector del proyecto (meta) y match con preferencias
             // temporal $proj_subsec_id = intval(get_post_meta($pid, 'subsector_proyecto', true));
             // temporal $okSub = empty($pref_subsec_ids) || in_array($proj_subsec_id, $pref_subsec_ids, true);
 
             /* === PARCHE TEMPORAL: OMITIR SUBSECTOR EN EL MATCH === */
-            $proj_subsec_id = intval(get_post_meta($pid, 'subsector_proyecto', true));
-            $okSub = true; // <— subsector NO filtra por ahora
-            pmx_log('    @@ SUBSEC(omitido): proj_id='.$proj_subsec_id.' => okSub=1');
+            //hoy $proj_subsec_id = intval(get_post_meta($pid, 'subsector_proyecto', true));
+            //hoy $okSub = true; // <— subsector NO filtra por ahora
+            //hoy pmx_log('    @@ SUBSEC(omitido): proj_id='.$proj_subsec_id.' => okSub=1');
             /* === FIN PARCHE === */
+			
+			/* === SUBSECTOR: match real === */
+$proj_subsec_ids     = pmx_get_project_subsector_ids($pid);               // IDs del proyecto
+$pref_subsec_codes   = pmx_get_pref_subsector_ids($inv_id);               // CÓDIGOS elegidos por el invers.
+$pref_subsec_ids     = apply_filters('pmx_map_pref_subsectors_to_project_ids', $pref_subsec_codes, $inv_id); // IDs mapeados
+
+// Reglas: si el inversionista NO seleccionó subsectores -> no filtra por este eje.
+// Si sí seleccionó, el proyecto debe tener AL MENOS uno de esos subsectores.
+$okSub = empty($pref_subsec_ids) || count(array_intersect($proj_subsec_ids, $pref_subsec_ids)) > 0;
+
+pmx_log(
+  '    SUBSEC: proj=['.implode(',', $proj_subsec_ids).']'
+  .' pref_codes=['.implode(',', $pref_subsec_codes).'] pref_ids=['.implode(',', $pref_subsec_ids).']'
+  .' ok='.($okSub?1:0)
+);
+/* === FIN SUBSECTOR === */
+
+
 
 
             $tip_pretty    = pmx_pretty_tipo_proyecto_es($tip);
             $etapas_pretty = pmx_pretty_etapas_es($eta);
+			
+			$subsec_ids_str    = implode(',', array_map('intval', (array)$proj_subsec_ids));
+$subsec_titles_arr = array_map(function($id){ return get_the_title($id); }, (array)$proj_subsec_ids);
+$subsec_titles_str = pmx_join($subsec_titles_arr);
+			
 
             pmx_log(
-                'PID '.$pid
-                .' | "'.$tit.'"'
-                .' | sector=['.pmx_join($sec).']'
-                .' | tipo=['.pmx_join($tip_pretty).'] canon=['.pmx_join($tip).']'
-                .' | etapa=['.pmx_join($etapas_pretty).'] canon=['.pmx_join($eta).']'
-                .' | interes=['.pmx_join($inv).']'
-                .' | monto='.($mon===null ? '(n/a)' : number_format((float)$mon, 0, '.', ','))
-                .' | subsector_id='.$proj_subsec_id
-                .' | okSub='.($okSub ? '1' : '0')
-            );
+    'PID '.$pid
+    .' | "'.$tit.'"'
+    .' | sector=['.pmx_join($sec).']'
+    .' | tipo=['.pmx_join($tip_pretty).'] canon=['.pmx_join($tip).']'
+    .' | etapa=['.pmx_join($etapas_pretty).'] canon=['.pmx_join($eta).']'
+    .' | interes=['.pmx_join($inv).']'
+    .' | monto='.( (is_null($mon) || trim((string)$mon)==='' || $mon==='0' || (is_numeric($mon) && (float)$mon==0.0)) ? '0' : number_format((float)$mon, 0, '.', ','))
+    .' | subsector_ids=['.$subsec_ids_str.'] ('.$subsec_titles_str.')'
+    .' | okSub='.($okSub ? '1' : '0')
+);
 
             $n_sec = pmx_norm_arr($sec);
             $n_tip = pmx_norm_arr($tip);
             $n_eta = pmx_norm_arr($eta);
             $n_inv = pmx_norm_arr($inv);
+			$n_inv = pmx_norm_arr($mon);
 
             // Reglas: eje vacío => no filtra; OR dentro del eje; AND entre ejes + monto + subsector
             $okSec = empty($n_pref_sect) || count(array_intersect($n_pref_sect, $n_sec)) > 0;
@@ -5842,9 +6931,57 @@ if (!function_exists('pmx_filtra_proyectos_por_preferencias')) {
             $okMon = true;
             if ($mon !== null && $min !== null && $mon < $min) $okMon = false;
             if ($mon !== null && $max !== null && $mon > $max) $okMon = false;
+			
+
+// === Política de coincidencia Sector/Subsector =====================
+// ¿El usuario seleccionó algo en cada eje?
+$usuario_sel_sector = !empty($n_pref_sect);
+$usuario_sel_subsec = !empty($pref_subsec_codes);
+
+// Política configurable: 'strict' (AND), 'or', 'subsector', 'sector'
+$policy = apply_filters('pmx_conflict_policy_sector_subsector', 'or');
+
+switch ($policy) {
+  case 'subsector':
+    // Si eligió subsector, manda subsector; si no, manda sector.
+    $okSectorSub = $usuario_sel_subsec ? $okSub : $okSec;
+    break;
+
+  case 'sector':
+    // Si eligió sector, manda sector; si no, manda subsector.
+    $okSectorSub = $usuario_sel_sector ? $okSec : $okSub;
+    break;
+
+  case 'or':
+    // Pasa si coincide sector O subsector (cuando seleccionó alguno de los dos)
+    $okSectorSub = ($usuario_sel_sector || $usuario_sel_subsec)
+      ? ($okSec || $okSub)
+      : true; // no seleccionó nada => no filtra
+    break;
+
+  case 'strict':
+  default:
+    // AND estricto: si seleccionó ambos, deben coincidir ambos;
+    // si solo seleccionó uno, manda ese.
+    if ($usuario_sel_sector && $usuario_sel_subsec) {
+      $okSectorSub = ($okSec && $okSub);
+    } elseif ($usuario_sel_sector) {
+      $okSectorSub = $okSec;
+    } elseif ($usuario_sel_subsec) {
+      $okSectorSub = $okSub;
+    } else {
+      $okSectorSub = true; // no seleccionó nada => no filtra
+    }
+    break;
+}
+
+// Log opcional
+pmx_log('[SECTOR_SUBSEC_POLICY] policy='.$policy.' | okSec='.(int)$okSec.' okSub='.(int)$okSub.' => okSectorSub='.(int)$okSectorSub);
+
+	//fin de politicas de filtrado		
 
             // ⬇️ AÑADIMOS Subsector al AND principal
-            if ($okSec && $okTip && $okEta && $okInt && $okMon && $okSub){
+            if ($okSectorSub && $okTip && $okEta && $okInt && $okMon){
                 $out[] = $p; $pas++;
             } else {
                 $why = array();
@@ -5863,6 +7000,21 @@ if (!function_exists('pmx_filtra_proyectos_por_preferencias')) {
         return $out;
     }
 }
+
+// politicas
+
+// AND estricto (lo actual por defecto)
+//add_filter('pmx_conflict_policy_sector_subsector', function(){ return 'strict'; });
+
+// OR: basta que coincida sector O subsector
+// add_filter('pmx_conflict_policy_sector_subsector', function(){ return 'or'; });
+
+// Prioriza subsector sobre sector
+// add_filter('pmx_conflict_policy_sector_subsector', function(){ return 'subsector'; });
+
+// Prioriza sector sobre subsector
+// add_filter('pmx_conflict_policy_sector_subsector', function(){ return 'sector'; });
+
 
 
 /* ===== MAIL HELPERS MÍNIMOS ===== */
@@ -5956,28 +7108,335 @@ if (!function_exists('pmx_get_inversionista_lang')) {
 
 
 /* ============================================================
- * STRINGS POR IDIOMA
+ * STRINGS POR IDIOMA DE CORREO PROYECTOS NUEVOS
  * ============================================================ */
+
+
+
+// campos acf
+
+/* ================== LOG BÁSICO ================== */
+if (!function_exists('pmx_mail_dbg')) {
+  function pmx_mail_dbg($msg, $ctx=null){
+    if (is_array($ctx) || is_object($ctx)) { $ctx = print_r($ctx, true); }
+    error_log('[PMXMAIL] '.$msg.($ctx!==null ? ' | '.$ctx : ''));
+  }
+}
+
+/* Utilidad: recorta para log */
+if (!function_exists('pmx_mail_snip')) {
+  function pmx_mail_snip($s, $n=120){
+    $s = (string)$s; $s = trim($s);
+    if ($s === '') return '(vacío)';
+    return (strlen($s) > $n) ? substr($s, 0, $n).'…' : $s;
+  }
+}
+
+/* (opcional) fija el ID explícito (usa tu ID real) */
+//update_option('pmx_mail_conf_page_id', 147141);
+
+/* ============ RESOLVER PÁGINA DE CONFIGURACIÓN (soporta CPT) ============ */
+if (!function_exists('pmx_mail_conf_page_id')) {
+  function pmx_mail_conf_page_id(){
+    static $cached = null; if ($cached !== null) return $cached;
+
+    // Tipos permitidos para la página de configuración
+    $allowed_types = apply_filters('pmx_mail_conf_allowed_types', array('page','conf_proyectos_nuevo'));
+
+    // 1) Opción guardada
+    $opt = intval(get_option('pmx_mail_conf_page_id'));
+    if ($opt > 0) {
+      $pt  = get_post_type($opt);
+      $ttl = get_the_title($opt);
+      $url = get_permalink($opt);
+      pmx_mail_dbg('Conf page via option', "id=$opt | type=$pt | title=".($ttl?:'(sin título)')." | url=".($url?:'(sin url)'));
+      if (in_array($pt, $allowed_types, true) && get_post_status($opt)) {
+        pmx_mail_dbg('Usando ID de configuración', $opt);
+        return $cached = $opt;
+      } else {
+        pmx_mail_dbg('Opción apunta a un post NO permitido; se intentará por slug');
+      }
+    }
+
+    // 2) Búsqueda por slug (en page y en conf_proyectos_nuevo)
+    $paths = array(
+      'conf_proyectos_nuevo/configuracion-de-correos-proyectos-nuevos',
+      'configuracion-de-correos-proyectos-nuevos'
+    );
+
+    foreach ($paths as $p){
+      if (function_exists('get_page_by_path')) {
+        $pg = get_page_by_path($p, OBJECT, $allowed_types);
+        if ($pg && isset($pg->ID)) {
+          pmx_mail_dbg('Conf page via slug', $p.' -> '.$pg->ID);
+          pmx_mail_dbg('Conf page resolved', "ID=".$pg->ID." | title=".get_the_title($pg->ID)." | url=".get_permalink($pg->ID));
+          return $cached = intval($pg->ID);
+        }
+      }
+      $name = basename($p);
+      $q = get_posts(array(
+        'name'           => $name,
+        'post_type'      => $allowed_types,
+        'posts_per_page' => 1,
+        'post_status'    => array('publish','draft','pending','private')
+      ));
+      if (!empty($q) && isset($q[0]->ID)) {
+        pmx_mail_dbg('Conf page via get_posts(name)', $name.' -> '.$q[0]->ID);
+        pmx_mail_dbg('Conf page resolved', "ID=".$q[0]->ID." | title=".get_the_title($q[0]->ID)." | url=".get_permalink($q[0]->ID));
+        return $cached = intval($q[0]->ID);
+      }
+    }
+
+    pmx_mail_dbg('Página de configuración NO encontrada');
+    return $cached = 0;
+  }
+}
+
+/* ============ LECTURA DE REPEATER (PRIMERA FILA) ============ */
+if (!function_exists('pmx_acf_rep_row')) {
+  function pmx_acf_rep_row($field_names, $post_id){
+    if (!function_exists('get_field')) { pmx_mail_dbg('ACF no disponible: get_field() ausente'); return array(); }
+    foreach ((array)$field_names as $f){
+      $raw = get_field($f, $post_id);
+      if (is_array($raw) && !empty($raw)) {
+        $row = (isset($raw[0]) && is_array($raw[0])) ? $raw[0] : $raw;
+        pmx_mail_dbg('Repeater OK', $f.' | keys='.implode(',', array_keys($row)));
+        return $row;
+      } else {
+        pmx_mail_dbg('Repeater vacío', $f);
+      }
+    }
+    pmx_mail_dbg('Ningún repeater con datos', implode('|',(array)$field_names).' | post_id='.$post_id);
+    return array();
+  }
+}
+
+/* ============ HELPERS DE IDIOMA PARA SUBCAMPOS ============ */
+if (!function_exists('pmx_norm_key')) {
+  function pmx_norm_key($s){
+    $s = strtolower((string)$s);
+    $s = strtr($s, array('á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u','ñ'=>'n'));
+    return preg_replace('~[^a-z0-9_]+~','',$s);
+  }
+}
+
+if (!function_exists('pmx_lang_from_row')) {
+  function pmx_lang_from_row($row){
+    $out = array('es'=>'','en'=>'');
+    if (!is_array($row) || empty($row)) { pmx_mail_dbg('Fila vacía'); return $out; }
+
+    foreach ($row as $k=>$v){
+      if (is_array($v) || is_object($v)) continue;
+      $nk = pmx_norm_key($k);
+      if (strpos($nk,'espanol') !== false || preg_match('~(^|_)es($|_)~',$nk))      { $out['es'] = (string)$v; }
+      elseif (strpos($nk,'ingles') !== false || preg_match('~(^|_)en($|_)~',$nk)) { $out['en'] = (string)$v; }
+    }
+
+    if ($out['es']==='' || $out['en']===''){
+      $vals = array();
+      foreach ($row as $k=>$v){ if (!is_array($v) && !is_object($v)) $vals[] = (string)$v; }
+      if ($out['es']==='' && isset($vals[0])) $out['es'] = $vals[0];
+      if ($out['en']==='' && isset($vals[1])) $out['en'] = $vals[1];
+    }
+
+    pmx_mail_dbg('Mapeado ES/EN', 'ES='.pmx_mail_snip($out['es']).' | EN='.pmx_mail_snip($out['en']));
+    return $out;
+  }
+}
+
+/* Primer valor escalar que aparezca en una fila (para from_email) */
+if (!function_exists('pmx_first_scalar')) {
+  function pmx_first_scalar($row){
+    if (!is_array($row)) return '';
+    foreach ($row as $k=>$v){
+      if (!is_array($v) && !is_object($v) && $v!=='') return (string)$v;
+    }
+    return '';
+  }
+}
+
+
+/* ============ CARGA DE CONFIG DESDE ACF (SIN FALLBACKS) ============ */
+if (!function_exists('pmx_mail_conf_load')) {
+  function pmx_mail_conf_load(){
+    $pid = pmx_mail_conf_page_id();
+    $cfg = array(
+      'subject_es' => '', 'subject_en' => '',
+      'body_es'    => '', 'body_en'    => '',
+      'count_es'   => '', 'count_en'   => '',
+      'pers_es'    => '', 'pers_en'    => '',
+	  // NUEVOS:
+      'from_email'   => '',
+      'from_name_es' => '', 'from_name_en' => '',
+    );
+    pmx_mail_dbg('Cargando config', 'pageID='.$pid);
+    if ($pid <= 0) return $cfg;
+
+    // 1) Asunto
+    $p = pmx_lang_from_row( pmx_acf_rep_row(array('asunto_proyectos_nuevos'), $pid) );
+    $cfg['subject_es'] = $p['es']; $cfg['subject_en'] = $p['en'];
+
+    // 2) Cuerpo (campo con typo "..._uevos")
+    $p = pmx_lang_from_row( pmx_acf_rep_row(array('cuerpo_de_correo_proyectos_uevos','cuerpo_de_correo_proyectos_nuevos'), $pid) );
+    $cfg['body_es'] = $p['es']; $cfg['body_en'] = $p['en'];
+
+    // 3) Conteo
+    $p = pmx_lang_from_row( pmx_acf_rep_row(array('conteo_proyectos_nuevos'), $pid) );
+    $cfg['count_es'] = $p['es']; $cfg['count_en'] = $p['en'];
+
+    // 4) Personalizado
+    $p = pmx_lang_from_row( pmx_acf_rep_row(array('notificacion_personalizada_proyectos_nuevos'), $pid) );
+    $cfg['pers_es'] = $p['es']; $cfg['pers_en'] = $p['en'];
+	
+	// 5) Dirección de correo para notificaciones
+    //    (primero intentamos el repeater histórico; si viene vacío, usamos el NUEVO campo email) este ya no existe 
+    $r = pmx_acf_rep_row(array('direccion_de_correo_para_notificaciones'), $pid);
+    $cfg['from_email'] = pmx_first_scalar($r);
+    pmx_mail_dbg('from_email(repeater)', pmx_mail_snip($cfg['from_email']));
+
+    if ($cfg['from_email'] === '') {
+      // NUEVO: ACF tipo "email" -> configuracion_de_correo_para_notificaciones
+      if (function_exists('get_field')) {
+        $em_val = get_field('configuracion_de_correo_para_notificaciones', $pid);
+        // Puede venir como string o como array('email'=>...)
+        if (is_array($em_val)) {
+          $em_val = isset($em_val['email']) ? $em_val['email'] : (isset($em_val['value']) ? $em_val['value'] : '');
+        }
+        $em_val = (string)$em_val;
+        pmx_mail_dbg('from_email(acf email)', pmx_mail_snip($em_val));
+        if ($em_val !== '') $cfg['from_email'] = $em_val;
+      }
+      // Meta crudo por si ACF devolviera vacío pero el meta existe
+      if ($cfg['from_email'] === '') {
+        $em_meta = get_post_meta($pid, 'configuracion_de_correo_para_notificaciones', true);
+        pmx_mail_dbg('from_email(meta email)', $em_meta === '' ? '(vacío)' : pmx_mail_snip($em_meta));
+        if ($em_meta !== '') $cfg['from_email'] = (string)$em_meta;
+      }
+    }
+
+    // 6) Display Name ES/EN (acepta typo en field name "dislpay...")
+    $p = pmx_lang_from_row( pmx_acf_rep_row(array('display_de_correo_de_notificaciones','dislpay_de_correo_de_notificaciones'), $pid) );
+    $cfg['from_name_es'] = $p['es']; $cfg['from_name_en'] = $p['en'];
+
+    pmx_mail_dbg('Config final',
+      'subject_es='.pmx_mail_snip($cfg['subject_es']).' | subject_en='.pmx_mail_snip($cfg['subject_en'])
+      .' || body_es='.pmx_mail_snip($cfg['body_es']).' | body_en='.pmx_mail_snip($cfg['body_en'])
+      .' || count_es='.pmx_mail_snip($cfg['count_es']).' | count_en='.pmx_mail_snip($cfg['count_en'])
+      .' || pers_es='.pmx_mail_snip($cfg['pers_es']).' | pers_en='.pmx_mail_snip($cfg['pers_en'])
+	  .' || from_email='.pmx_mail_snip($cfg['from_email'])
+      .' || from_name_es='.pmx_mail_snip($cfg['from_name_es']).' | from_name_en='.pmx_mail_snip($cfg['from_name_en'])
+    );
+    return $cfg;
+  }
+}
+
+/* ============ FROM único (email para ES/EN) + logs ============ */
+if (!function_exists('pmx_mail_from_conf')) {
+  function pmx_mail_from_conf($lang = null){
+    $cfg   = pmx_mail_conf_load();
+
+    // EMAIL: único para ambos idiomas
+    $email_raw = isset($cfg['from_email']) ? $cfg['from_email'] : '';
+    $email     = sanitize_email($email_raw);
+
+    // NAME: depende del idioma (si no hay idioma, usamos ES)
+    $name_raw = ($lang === 'en')
+      ? (isset($cfg['from_name_en']) ? $cfg['from_name_en'] : '')
+      : (isset($cfg['from_name_es']) ? $cfg['from_name_es'] : '');
+    $name = sanitize_text_field($name_raw);
+
+    // Logs forenses
+    pmx_mail_dbg('FROM seleccionado (antes de validación)',
+      'lang='.(is_null($lang)?'null':$lang).' | name='.pmx_mail_snip($name).' | email='.$email
+    );
+
+    return array('email' => $email, 'name' => $name);
+  }
+}
+
+/* ============ INYECTAR NOMBRE SI FALTA EN LA LEYENDA ============ */
+if (!function_exists('pmx_inject_name_if_missing')) {
+  function pmx_inject_name_if_missing($txt, $nombre, $is_en){
+    $txt = (string)$txt; $nombre = (string)$nombre;
+    if ($txt === '' || $nombre === '') return $txt;
+
+    // Si ya trae placeholder, no tocamos
+    if (stripos($txt, '{NOMBRE}') !== false || stripos($txt, '{NAME}') !== false) return $txt;
+
+    if (!$is_en) {
+      // ES: "Estimado(a) usuario" -> "Estimado(a) Nombre"
+      $out = preg_replace('/(Estimado\(a\))\s+usuario\b/i', 'Estimado(a) <strong>'.esc_html($nombre).'</strong>', $txt, 1, $count);
+      if ($count > 0) return $out;
+      // "Estimado(a)" a secas -> insertamos nombre
+      $out = preg_replace('/Estimado\(a\)/i', 'Estimado(a) <strong>'.esc_html($nombre).'</strong>', $txt, 1, $count);
+      if ($count > 0) return $out;
+      // Reemplazar primera aparición de "usuario"
+      $out = preg_replace('/\busuario\b/i', '<strong>'.esc_html($nombre).'</strong>', $txt, 1, $count);
+      if ($count > 0) return $out;
+      // Si no hay saludo ni palabra "usuario", lo anteponemos
+      return 'Estimado(a) <strong>'.esc_html($nombre).'</strong>, '.ltrim($txt);
+    }
+
+    // EN
+    $out = preg_replace('/(Dear)\s+user\b/i', 'Dear <strong>'.esc_html($nombre).'</strong>', $txt, 1, $count);
+    if ($count > 0) return $out;
+    $out = preg_replace('/\bDear\b/i', 'Dear <strong>'.esc_html($nombre).'</strong>', $txt, 1, $count);
+    if ($count > 0) return $out;
+    $out = preg_replace('/\buser\b/i', '<strong>'.esc_html($nombre).'</strong>', $txt, 1, $count);
+    if ($count > 0) return $out;
+    return 'Dear <strong>'.esc_html($nombre).'</strong>, '.ltrim($txt);
+  }
+}
+
+/* ============ API PRINCIPAL (SIN FALLBACKS) ============ */
 if (!function_exists('pmx_mail_strings')) {
   function pmx_mail_strings($lang, $nombre, $rendered, $mail){
     $is_en = ($lang === 'en');
+    pmx_mail_dbg('pmx_mail_strings()', 'lang='.$lang.' | rendered='.$rendered.' | mail='.pmx_mail_snip($mail, 60));
+    $cfg   = pmx_mail_conf_load();
+
+    $rep = array(
+      '{NOMBRE}' => esc_html($nombre),
+      '{NAME}'   => esc_html($nombre),
+      '{NUM}'    => strval(intval($rendered)),
+      '{COUNT}'  => strval(intval($rendered)),
+    );
+
+    // Tomamos ACF
+    $subject      = (string)($is_en ? $cfg['subject_en'] : $cfg['subject_es']);
+    $tot_label    = (string)($is_en ? $cfg['count_en']   : $cfg['count_es']);
+    $sub_titulo   = (string)($is_en ? $cfg['body_en']    : $cfg['body_es']);
+    $personal_raw = (string)($is_en ? $cfg['pers_en']    : $cfg['pers_es']);
+
+    // Reemplazo + inyección de nombre si falta
+    $personalizado = strtr($personal_raw, $rep);
+    $personalizado = pmx_inject_name_if_missing($personalizado, $nombre, $is_en);
+
+    // Sanitiza
+    $subject      = sanitize_text_field($subject);
+    $tot_label    = sanitize_text_field($tot_label);
+    $sub_titulo   = wp_kses_post($sub_titulo);
+    $personalizado= wp_kses_post($personalizado);
+
+    pmx_mail_dbg('Strings resultantes',
+      'subject='.pmx_mail_snip($subject)
+      .' | tot_label='.pmx_mail_snip($tot_label)
+      .' | sub_titulo='.pmx_mail_snip($sub_titulo)
+      .' | personalizado='.pmx_mail_snip($personalizado)
+    );
 
     return array(
-      'subject'       => $is_en ? 'New projects available' : 'Nuevos proyectos disponibles',
-      'tot_label'     => $is_en ? 'Added projects' : 'Proyectos agregados',
-      'sub_titulo'    => $is_en
-        ? 'Projects incorporated into the Proyectos México platform are subject to review and, where appropriate, ratification or removal by the promoting agencies. Additions, modifications and/or removals are made by Banobras solely in accordance with official information and/or by instruction of the promoting agencies.'
-        : 'Los proyectos incorporados en la plataforma Proyectos México están sujetos a revisión y, en su caso, ratificación o baja por parte de las dependencias promotoras de los mismos. Las altas, modificaciones y/o bajas de proyectos en la plataforma Proyectos México son realizadas por Banobras exclusivamente de acuerdo a información oficial y/o por instrucción de las dependencias promotoras.',
-      'personalizado' => $is_en
-        ? 'Dear <strong>'.esc_html($nombre).'</strong>, we inform you that '.($rendered===1 ? 'the following project has been added' : 'the following projects have been added').' for your review.'
-        : 'Estimado(a) <strong>'.esc_html($nombre).'</strong>, le notificamos que '.($rendered===1 ? 'el siguiente proyecto ha sido agregado' : 'los siguientes proyectos han sido agregados').' para su consulta.',
-      'no_items'      => $is_en ? 'There are no new projects at the moment.' : 'No hay proyectos nuevos por el momento.',
-      'btn_unsub'     => $is_en ? 'Unsubscribe' : 'Darse de Baja',
-      
+      'subject'       => $subject,
+      'tot_label'     => $tot_label,
+      'sub_titulo'    => $sub_titulo,
+      'personalizado' => $personalizado,
+      'no_items'      => $is_en ? 'There are no new projects at the moment.' : 'No hay proyectos nuevos por el momento.', //opcional
+      'btn_unsub'     => $is_en ? 'Unsubscribe' : 'Darse de Baja', // opcional
     );
   }
 }
 
+// campos acf
 
 /* ========= CONFIG TABLA REPORTS (gatillo por BD) ========= */
 if (!defined('PMX_REPORTS_TABLE')) {
@@ -6056,11 +7515,37 @@ if (!function_exists('enviar_notificaciones_proyectos_nuevos')) {
       }
 
       // CORREO INVALIDO
-      if (!is_email($email)) {
-        pmx_log('INV '.$inv_id.' '.$nombre.' ❌ email inválido: '.$email);
-        pmx_log_db_report($email, array('inv_id'=>$inv_id,'nombre'=>$nombre,'motivo'=>'email_invalido'), 'proyectos_nuevos','EMAIL_INVALIDO',$lang);
-        continue;
-      }
+      // CORREO INVALIDO (formato + dominio con DNS)
+$em = trim((string)$email);
+$ok = false;
+
+if ($em !== '' && is_email($em)) {
+  // extrae dominio
+  $at = strrpos($em, '@');
+  $dom = $at !== false ? strtolower(substr($em, $at + 1)) : '';
+
+  static $dns_cache = array(); // evita repetir consultas DNS por el mismo dominio
+
+  if ($dom !== '') {
+    if (isset($dns_cache[$dom])) {
+      $ok = $dns_cache[$dom];
+    } else {
+      // MX preferente; si no hay MX, acepta A (muchos servidores reciben por A)
+      $mx_ok = function_exists('checkdnsrr') ? @checkdnsrr($dom, 'MX') : true;
+      $a_ok  = $mx_ok ? true : (function_exists('checkdnsrr') ? @checkdnsrr($dom, 'A') : true);
+      $ok = ($mx_ok || $a_ok);
+      $dns_cache[$dom] = $ok;
+    }
+  }
+}
+
+// si falla cualquiera (formato o DNS), lo tratamos como inválido
+if (!$ok) {
+  pmx_log('INV '.$inv_id.' '.$nombre.' ❌ email inválido o dominio sin DNS: '.$email);
+  pmx_log_db_report($email, array('inv_id'=>$inv_id,'nombre'=>$nombre,'motivo'=>'email_invalido'), 'proyectos_nuevos','EMAIL_INVALIDO',$lang);
+  continue;
+}
+
 
       /* =========================================================
        * PREPARAR COLA PENDIENTE (sin crear funciones nuevas)
@@ -6163,11 +7648,29 @@ if (!function_exists('enviar_notificaciones_proyectos_nuevos')) {
       $set_html = function(){ return 'text/html; charset=UTF-8'; };
       add_filter('wp_mail_content_type', $set_html);
 
-      // header provisional para ver tráfico
-      $headers = array(
-        'From: Proyectos México <no-reply@'.pmx_domain_from_home().'>',
-        'Reply-To: '.$email,
-      );
+         // --- FROM personalizado desde ACF ---
+$from_conf  = function_exists('pmx_mail_from_conf') ? pmx_mail_from_conf($lang) : array('email'=>'','name'=>'');
+
+// Si en ACF hay algo, lo usamos; si no, dejamos tu valor actual
+$from_name  = trim(isset($from_conf['name'])  ? $from_conf['name']  : '');
+$from_email = trim(isset($from_conf['email']) ? $from_conf['email'] : '');
+
+if ($from_name !== '' || $from_email !== '') {
+  if ($from_name  === '') $from_name  = 'Proyectos México';
+  if ($from_email === '') $from_email = 'no-replyyy@banobras.gob.mx';
+  $from_header = 'From: ' . $from_name . ' <' . $from_email . '>';
+} else {
+  // fallback a lo que ya tenías
+  $from_header = 'From: Proyectos México <no-reply@banobras.gob.mx>';
+}
+
+$headers = array(
+  $from_header,
+  'Reply-To: ' . $email,
+);
+	  
+	  
+	  
 
       pmx_log('ENVIAR ['.$lang.'] -> to='.$email.' | subj="'.wp_specialchars_decode($asunto, ENT_QUOTES).'" | html_len='.strlen((string)$html));
       pmx_log('MAIL_LANG inv='.$inv_id.' name="'.get_the_title($inv_id).'" lang='.$lang);
@@ -6603,6 +8106,35 @@ if (!function_exists('pmx_render_email_proyectos_nuevos_html')) {
     $w = 210; 
     $h = 70; 
     $divider_color = '#e4e9eb';
+	
+	// =========================================
+// PREHEADER (debe ir ANTES de cualquier <a>)
+// =========================================
+$lang = ($language === 'en') ? 'en' : 'es';
+$preheader_text = ($lang === 'en')
+  ? 'New projects available on Projects Mexico.'
+  : 'Nuevos proyectos disponibles en Proyectos México.';
+
+// Relleno invisible para que la vista previa no agarre el siguiente contenido
+$pre_pad = str_repeat('&#8203;&#160;', 35);
+
+$preheader_block = '
+  <!-- PREHEADER OCULTO -->
+  <div style="display:none!important;opacity:0;visibility:hidden;mso-hide:all;
+              font-size:1px;line-height:1px;color:#ffffff;max-height:0;max-width:0;
+              overflow:hidden;">
+    '.$preheader_text.' '.$pre_pad.'
+  </div>
+  <!--[if mso]>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr><td style="mso-hide:all;font-size:1px;line-height:1px;color:#ffffff;">
+        '.$preheader_text.' '.$pre_pad.'
+      </td></tr>
+    </table>
+  <![endif]-->
+';
+
+	
 
     // Logo block (responsive)
     $logo_block = '
@@ -6624,7 +8156,9 @@ if (!function_exists('pmx_render_email_proyectos_nuevos_html')) {
         <tr><td height="10" style="height:10px;line-height:10px;font-size:0;">&nbsp;</td></tr>
       </table>';
 
-    $titulo_hdr  = '';
+   $html  = '';
+$html .= $preheader_block;   // <-- primero
+$html .= $logo_block;        // <-- después ya puedes poner enlaces
     $header_html = Header_Preferences_Shortcode($rendered, $titulo_hdr, $S['sub_titulo'], $S['tot_label'], $language, $S['personalizado']);
     $header_html = pmx_replace_first_h1_with($header_html, $logo_block);
 
@@ -6686,6 +8220,9 @@ if (!function_exists('pmx_render_email_proyectos_nuevos_html')) {
     // === PASADA FINAL: asegura que TODO el HTML está full-width y envuelve con una última banda ===
     $html = pmx_email_fullwidth_filters($html);
     $html = pmx_full_bleed_wrap($html, '#ffffff');
+	
+	
+	
 
     pmx_end_lang($ctx);
     return $html;
@@ -6765,210 +8302,6 @@ if (!function_exists('Title_Proyect_Preferences_NewProject')) {
     return pmx_extract_first_table_block($full);
   }
 }
-
-
-/**
- * Plugin Name: PMX - Auditoría títulos EN (lógica de tablas)
- * Description: Audita proyectos detectando si el título EN se obtiene igual que en las tablas (pll_get_post + meta nombre_oficial_ingles).
- */
-
-if (!function_exists('pmx_log')) {
-  function pmx_log($msg){ if(is_array($msg)||is_object($msg)){$msg=print_r($msg,true);} error_log('[PMX] '.$msg); }
-}
-
-/**
- * Obtiene el título en un idioma, imitando la lógica de tus tablas:
- * - EN: intenta post traducido con pll_get_post($base,'en'); si existe meta
- *       nombre_oficial_ingles en el post base, **override**.
- * - ES: usa el traducido a 'es' si existe, si no el base.
- * Devuelve string limpio (html_entity_decode + trim).
- */
-if (!function_exists('pmx_get_title_like_tables')) {
-  function pmx_get_title_like_tables($post_id_base, $lang='es') {
-    $lang = ($lang==='en'?'en':'es');
-
-    // 1) ID objetivo según idioma (traducción si existe)
-    $post_id_lang = $post_id_base;
-    if (function_exists('pll_get_post')) {
-      $tr = pll_get_post($post_id_base, $lang);
-      if (!empty($tr)) $post_id_lang = $tr;
-    }
-
-    // 2) Título por idioma
-    $titulo = get_post_field('post_title', $post_id_lang);
-
-    // 3) Override especial para inglés con meta del **post base**
-    if ($lang === 'en') {
-      $nombre_oficial_en = get_post_meta($post_id_base, 'nombre_oficial_ingles', true);
-      if (is_string($nombre_oficial_en) && trim($nombre_oficial_en) !== '') {
-        $titulo = $nombre_oficial_en;
-      }
-    }
-
-    $titulo = is_string($titulo) ? $titulo : '';
-    return trim(html_entity_decode($titulo, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
-  }
-}
-
-/** Normaliza para comparar textos (minúsculas + recorte). */
-if (!function_exists('pmx_norm_text')) {
-  function pmx_norm_text($s){
-    $s = is_string($s) ? $s : '';
-    $s = html_entity_decode($s, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-    $s = trim($s);
-    $s = mb_strtolower($s, 'UTF-8');
-    return $s;
-  }
-}
-
-/**
- * Auditoría principal.
- * - scope: 'reg' (term 563), 'mega' (562), 'all' (ambos). Default: all.
- * - limit: tope de posts a revisar. -1 = todos.
- * Loguea por cada PID: IDs ES/EN, títulos ES/EN, fuente EN (meta o traducción) y estatus.
- */
-if (!function_exists('pmx_auditar_titulos_en_tablas_logic')) {
-  function pmx_auditar_titulos_en_tablas_logic($limit = -1, $scope = 'all'){
-    $terms = array(562,563);
-    if ($scope === 'reg') $terms = array(563);
-    if ($scope === 'mega') $terms = array(562);
-
-    $args = array(
-      'post_type'      => 'proyecto_inversion',
-      'post_status'    => 'publish',
-      'posts_per_page' => ($limit && intval($limit) > 0) ? intval($limit) : -1,
-      'orderby'        => array('date'=>'DESC','title'=>'ASC'),
-      'fields'         => 'ids',
-      'tax_query'      => array(
-        array(
-          'taxonomy' => 'categoria_macroproyecto',
-          'field'    => 'term_id',
-          'terms'    => $terms,
-          'operator' => 'IN',
-        ),
-      ),
-    );
-
-    $q = new WP_Query($args);
-    $total = intval($q->found_posts);
-    pmx_log('[AUDIT_EN] Inicio auditoría: scope='.implode(',',$terms).' total='.$total.' limit='.(($limit && $limit>0)?$limit:'all'));
-
-    $c_ok = 0;       // EN distinto a ES (traducción/override válida)
-    $c_same = 0;     // EN igual a ES (puede ser correcto si es nombre propio)
-    $c_no_tr = 0;    // sin traducción en Polylang (id_en = base o vacío)
-    $c_empty = 0;    // título EN vacío tras toda la lógica
-    $c_checked = 0;
-
-    if ($q->have_posts()) {
-      foreach ($q->posts as $pid_base) {
-        $c_checked++;
-
-        // ID traducido a EN (solo para diagnóstico)
-        $id_en = 0;
-        if (function_exists('pll_get_post')) {
-          $tmp = pll_get_post($pid_base, 'en');
-          $id_en = $tmp ? intval($tmp) : 0;
-        }
-
-        // Títulos usando la MISMA lógica que tus tablas
-        $title_es = pmx_get_title_like_tables($pid_base, 'es');
-        $title_en = pmx_get_title_like_tables($pid_base, 'en');
-
-        // ¿De dónde salió el EN?
-        $src = 'fallback';
-        $meta_en = get_post_meta($pid_base, 'nombre_oficial_ingles', true);
-        if (is_string($meta_en) && trim($meta_en) !== '') {
-          $src = 'meta(nombre_oficial_ingles)';
-        } elseif ($id_en && $id_en !== $pid_base) {
-          $src = 'pll_translation';
-        } else {
-          $src = 'no_translation_fallback_base';
-        }
-
-        // URLs para verificar manualmente
-        $url_es = get_permalink($pid_base);
-        $url_en = get_permalink($id_en ?: $pid_base);
-        if ($url_en) $url_en = add_query_arg('language', 'en', $url_en);
-
-        // Normalizamos para comparar
-        $nes = pmx_norm_text($title_es);
-        $nen = pmx_norm_text($title_en);
-
-        $status = '';
-        if ($nen === '') {
-          $status = 'MISS_EMPTY';
-          $c_empty++;
-        } else {
-          if ($nes === $nen) {
-            // mismo texto en ES y EN (ej: nombre propio)
-            $status = 'SAME_AS_ES';
-            $c_same++;
-          } else {
-            $status = 'OK_EN';
-            $c_ok++;
-          }
-        }
-
-        // Si no hay traducción EN real
-        if (!$id_en || $id_en === $pid_base) {
-          $c_no_tr++;
-          if ($status === 'OK_EN' && $src === 'meta(nombre_oficial_ingles)') {
-            // está OK gracias al meta, pero marcamos que no hay post EN
-            $status .= '|NO_EN_POST';
-          } elseif ($status !== 'MISS_EMPTY') {
-            $status .= '|NO_EN_POST';
-          }
-        }
-
-        pmx_log('[AUDIT_EN] PID='.$pid_base
-          .' id_en='.( $id_en ?: 0 )
-          .' src='.$src
-          .' | ES="'. $title_es .'"'
-          .' | EN="'. $title_en .'"'
-          .' | status='.$status
-          .' | url_es='.$url_es
-          .' | url_en='.$url_en
-        );
-      }
-    }
-
-    pmx_log('[AUDIT_EN] RESUMEN -> revisados='.$c_checked
-      .' | OK_EN='.$c_ok
-      .' | SAME_AS_ES='.$c_same
-      .' | MISS_EMPTY='.$c_empty
-      .' | NO_EN_POST='.$c_no_tr
-    );
-
-    return array(
-      'checked'=>$c_checked,
-      'ok'=>$c_ok,
-      'same'=>$c_same,
-      'empty'=>$c_empty,
-      'no_en_post'=>$c_no_tr,
-      'total'=>$total,
-    );
-  }
-}
-
-/** Disparador por URL: /wp-admin/?pmx_audita_en=1&limit=200&scope=all */
-add_action('admin_init', function(){
-  if (!is_admin()) return;
-  if (!isset($_GET['pmx_audita_en'])) return;
-  if (!current_user_can('manage_options')) return;
-
-  $limit = isset($_GET['limit']) ? intval($_GET['limit']) : -1; // -1 = todos
-  $scope = isset($_GET['scope']) ? strtolower(trim($_GET['scope'])) : 'all';
-  if (!in_array($scope, array('reg','mega','all'), true)) $scope = 'all';
-
-  pmx_auditar_titulos_en_tablas_logic($limit, $scope);
-
-  // feedback mínimo en pantalla para que sepas que corrió
-  wp_die('<pre>Auditoría ejecutada. Revisa <code>wp-content/debug.log</code> (prefijo [PMX] [AUDIT_EN]).</pre>');
-});
-
-
-
-
 
 /* ==== Helpers preferencia 'proyectos nuevos' (fallback) ==== */
 if (!function_exists('pmx_pref_nuevos_sig')) {
@@ -7304,7 +8637,7 @@ if (!function_exists('pmx_get_alias_proyecto_html')) {
          <td align="center" style="padding:8px 24px 0 24px;">
            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;mso-table-lspace:0;mso-table-rspace:0;border:2px solid '.$accent.';">
              <tr>
-               <td align="center" bgcolor="#F3F4F6" style="background:#F3F4F6;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:20px;mso-line-height-rule:exactly;color:#243b53;padding:12px 16px;word-wrap:break-word;">
+               <td align="center" bgcolor="#F3F4F6" style="background:#FFFFFF;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:20px;mso-line-height-rule:exactly;color:#243b53;padding:12px 16px;word-wrap:break-word;">
                  '.$alias_safe.'
 
                  <!-- Espacio antes del botón -->
@@ -7360,3 +8693,561 @@ function enviar_desde_pendientes_bd() {
 }
 
 
+// ocultar paginas 
+// Excluir de resultados de búsqueda estas páginas por slug
+add_action('pre_get_posts', function($q){
+  if (is_admin() || !$q->is_main_query() || !$q->is_search()) return;
+
+  $slugs = array(
+    'proceso-ttl-proyectos-nuevos',
+    'proceso-notificacion-diario-de-proyectos-nuevos',
+  );
+
+  // Obtiene IDs por slug y también sus traducciones (si usas Polylang)
+  $ids = array();
+  foreach ($slugs as $slug){
+    $p = get_page_by_path($slug, OBJECT, 'page');
+    if ($p && !empty($p->ID)) {
+      $ids[] = (int)$p->ID;
+
+      // Captura traducciones si existen
+      if (function_exists('pll_get_post')) {
+        $langs = function_exists('pll_languages_list') ? pll_languages_list() : array();
+        foreach ($langs as $l) {
+          $tr = pll_get_post($p->ID, $l);
+          if ($tr) $ids[] = (int)$tr;
+        }
+      }
+    }
+  }
+
+  $ids = array_values(array_unique(array_filter($ids)));
+  if ($ids) {
+    $not_in = (array) $q->get('post__not_in');
+    $q->set('post__not_in', array_unique(array_merge($not_in, $ids)));
+  }
+});
+
+
+// marcado de inversionitas
+ 
+/* ================================================
+ * Submenú: Preferencia Proyectos Nuevos (Inversionistas)
+ * Padre: notification-back-mail-plugin
+ * ================================================ */
+
+/* ====== Utilidad central: marcar preferencia faltantes o todos ====== */
+if (!function_exists('pmx_backfill_pref_nuevos')) {
+  function pmx_backfill_pref_nuevos($force_all=false){
+    $added=0; $skipped=0; $updated=0; $acf_key=null;
+
+    if (function_exists('acf_get_field')) {
+      $f = acf_get_field('proyectos_nuevos_fin');
+      if ($f && !empty($f['key'])) $acf_key = $f['key']; // ej. field_64ab...
+    }
+
+    $paged = 1;
+    do {
+      $q = new WP_Query(array(
+        'post_type'      => 'reg_inversionistas',
+        'post_status'    => array('draft'),
+        'posts_per_page' => 500,
+        'fields'         => 'ids',
+        'paged'          => $paged,
+        'no_found_rows'  => true,
+      ));
+      if (!$q->have_posts()) break;
+
+      foreach ($q->posts as $id){
+        $v = get_post_meta($id, 'proyectos_nuevos_fin', true);
+        if ($force_all) {
+          update_post_meta($id, 'proyectos_nuevos_fin', '1');
+          if ($acf_key) update_post_meta($id, '_proyectos_nuevos_fin', $acf_key);
+          $updated++;
+        } else {
+          if ($v === '' || $v === null){
+            update_post_meta($id, 'proyectos_nuevos_fin', '1');
+            if ($acf_key) update_post_meta($id, '_proyectos_nuevos_fin', $acf_key);
+            $added++;
+          } else {
+            $skipped++;
+          }
+        }
+      }
+      $paged++;
+      wp_reset_postdata();
+    } while (true);
+
+    return array($added, $skipped, $updated);
+  }
+}
+
+/* ====== Utilidad: poner TODOS en OFF (o valor dado) ====== */
+if (!function_exists('pmx_set_pref_nuevos_all')) {
+  function pmx_set_pref_nuevos_all($value='0'){
+    $value = ($value === '1') ? '1' : '0';
+    $updated = 0; $acf_key = null;
+
+    if (function_exists('acf_get_field')) {
+      $f = acf_get_field('proyectos_nuevos_fin');
+      if ($f && !empty($f['key'])) $acf_key = $f['key'];
+    }
+
+    $paged = 1;
+    do {
+      $q = new WP_Query(array(
+        'post_type'      => 'reg_inversionistas',
+        'post_status'    => array('draft'),
+        'posts_per_page' => 500,
+        'fields'         => 'ids',
+        'paged'          => $paged,
+        'no_found_rows'  => true,
+      ));
+      if (!$q->have_posts()) break;
+
+      foreach ($q->posts as $id){
+        update_post_meta($id, 'proyectos_nuevos_fin', $value);
+        if ($acf_key) update_post_meta($id, '_proyectos_nuevos_fin', $acf_key);
+        $updated++;
+      }
+      $paged++;
+      wp_reset_postdata();
+    } while (true);
+
+    return $updated;
+  }
+}
+
+/* ====== Helpers UI ====== */
+if (!function_exists('pmx_inv_get_email')) {
+  function pmx_inv_get_email($post_id){
+    static $cache = array();
+    if (isset($cache[$post_id])) return $cache[$post_id];
+
+    // 1) Claves comunes
+    $keys = array(
+      'email','correo','mail',
+      'email_inversionista','correo_inversionista',
+      'correo_electronico','correo_registro_reg_inversionista',
+      'email_reg_inversionista','mail_reg_inversionista'
+    );
+    foreach ($keys as $k){
+      $v = get_post_meta($post_id, $k, true);
+      if (is_string($v) && filter_var($v, FILTER_VALIDATE_EMAIL)) {
+        return $cache[$post_id] = $v;
+      }
+    }
+    // 2) Escaneo completo de meta
+    $all = get_post_meta($post_id);
+    foreach ($all as $k => $vals){
+      foreach ((array)$vals as $v){
+        if (is_scalar($v)) {
+          $s = (string)$v;
+          if ($s && filter_var($s, FILTER_VALIDATE_EMAIL)) {
+            return $cache[$post_id] = $s;
+          }
+        } elseif (is_array($v)) {
+          foreach ($v as $vv){
+            if (is_scalar($vv)) {
+              $s = (string)$vv;
+              if ($s && filter_var($s, FILTER_VALIDATE_EMAIL)) {
+                return $cache[$post_id] = $s;
+              }
+            }
+          }
+        }
+      }
+    }
+    // 3) Último recurso: email del autor
+    $author_id = (int) get_post_field('post_author', $post_id);
+    if ($author_id){
+      $u = get_userdata($author_id);
+      if ($u && !empty($u->user_email)) {
+        return $cache[$post_id] = $u->user_email;
+      }
+    }
+    return $cache[$post_id] = '';
+  }
+}
+
+if (!function_exists('pmx_nuevos_status')) {
+  function pmx_nuevos_status($post_id){
+    $v = get_post_meta($post_id, 'proyectos_nuevos_fin', true);
+    if ($v === '1' || $v === 1 || $v === true) return '1';     // ON
+    if ($v === '0' || $v === 0 || $v === false) return '0';    // OFF
+    return ''; // FALTA
+  }
+}
+
+if (!function_exists('pmx_status_badge')) {
+  function pmx_status_badge($status){
+    if ($status === '1') {
+      return '<span style="display:inline-block;padding:2px 8px;border-radius:10px;background:#d1fae5;color:#065f46;font-weight:600;">ON</span>';
+    } elseif ($status === '0') {
+      return '<span style="display:inline-block;padding:2px 8px;border-radius:10px;background:#fee2e2;color:#991b1b;font-weight:600;">OFF</span>';
+    }
+    return '<span style="display:inline-block;padding:2px 8px;border-radius:10px;background:#e5e7eb;color:#374151;font-weight:600;">FALTA</span>';
+  }
+}
+
+/* ====== AJAX: alternar preferencia con clic en el badge ====== */
+add_action('wp_ajax_pmx_toggle_pref_nuevos', 'pmx_ajax_toggle_pref_nuevos');
+function pmx_ajax_toggle_pref_nuevos(){
+  if ( ! current_user_can('manage_options') ) {
+    wp_send_json_error('Permisos insuficientes', 403);
+  }
+  check_ajax_referer('pmx_inv_nuevos_toggle');
+
+  $post_id = isset($_POST['post_id']) ? intval($_POST['post_id']) : 0;
+  if ($post_id <= 0) wp_send_json_error('ID inválido');
+  if (get_post_type($post_id) !== 'reg_inversionistas') {
+    wp_send_json_error('Tipo inválido');
+  }
+
+  $set = isset($_POST['set']) ? (string)$_POST['set'] : '';
+  $set = ($set === '1') ? '1' : '0';
+
+  update_post_meta($post_id, 'proyectos_nuevos_fin', $set);
+
+  if (function_exists('acf_get_field')) {
+    $f = acf_get_field('proyectos_nuevos_fin');
+    if ($f && !empty($f['key'])) {
+      update_post_meta($post_id, '_proyectos_nuevos_fin', $f['key']);
+    }
+  }
+
+  wp_send_json_success(array(
+    'status' => $set,
+    'badge'  => pmx_status_badge($set),
+  ));
+}
+
+/* ====== Submenú bajo el mismo padre ====== */
+add_action('admin_menu', function(){
+  add_submenu_page(
+    'notification-back-mail-plugin',     // padre: mismo que tu "Proceso Proyectos Nuevos"
+    'Preferencia Proyectos Nuevos',      // título de la página
+    'Pref. Proyectos Nuevos',            // título en el menú
+    'manage_options',                    // capacidad
+    'pmx-inversionistas-nuevos',         // slug
+    'pmx_render_pagina_inversionistas_nuevos' // callback
+  );
+}, 20);
+
+/* ====== Render de la página ====== */
+if (!function_exists('pmx_render_pagina_inversionistas_nuevos')) {
+  function pmx_render_pagina_inversionistas_nuevos(){
+    if (!current_user_can('manage_options')) return;
+    global $wpdb;
+
+    $msg = '';
+
+    // Procesar acciones (con nonce)
+    if (isset($_POST['pmx_inv_nuevos_nonce']) && wp_verify_nonce($_POST['pmx_inv_nuevos_nonce'], 'pmx_inv_nuevos')) {
+      if (isset($_POST['mark_missing'])) {
+        list($added, $skipped, $updated) = pmx_backfill_pref_nuevos(false);
+        $msg = "Marcados (sin meta previo): <strong>{$added}</strong>. Omitidos (ya tenían valor): <strong>{$skipped}</strong>.";
+      } elseif (isset($_POST['mark_all'])) {
+        list($added, $skipped, $updated) = pmx_backfill_pref_nuevos(true);
+        $msg = "Actualizados a '1' (todos): <strong>{$updated}</strong>.";
+      } elseif (isset($_POST['unmark_all'])) {
+        $updated = pmx_set_pref_nuevos_all('0');
+        $msg = "Actualizados a '0' (todos): <strong>{$updated}</strong>.";
+      }
+      echo '<div class="updated notice"><p>'.$msg.'</p></div>';
+    }
+
+    // Nonce para el toggle AJAX
+    $nonce_toggle = wp_create_nonce('pmx_inv_nuevos_toggle');
+
+    // Búsqueda y paginación
+    $s      = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
+    $paged  = isset($_GET['paged']) ? max(1, intval($_GET['paged'])) : 1;
+    $pp     = 50;
+
+    $args = array(
+      'post_type'      => 'reg_inversionistas',
+      'post_status'    => array('draft'),
+      'posts_per_page' => $pp,
+      'paged'          => $paged,
+      's'              => $s,
+      'orderby'        => 'date',
+      'order'          => 'DESC',
+    );
+    $q = new WP_Query($args);
+
+    // Resumen de conteos
+    $table_posts = $wpdb->posts;
+    $table_meta  = $wpdb->postmeta;
+    // Resumen de conteos (sin duplicados y con FALTAN cuando no hay meta o no es '0'/'1')
+$sql = "
+  SELECT
+    SUM(CASE WHEN pm.has1 = 1 THEN 1 ELSE 0 END) AS si,
+    SUM(CASE WHEN pm.has1 = 0 AND pm.has0 = 1 THEN 1 ELSE 0 END) AS no,
+    SUM(CASE WHEN (IFNULL(pm.has1,0)=0 AND IFNULL(pm.has0,0)=0) THEN 1 ELSE 0 END) AS faltante
+  FROM {$table_posts} p
+  LEFT JOIN (
+    SELECT post_id,
+           MAX(CASE WHEN meta_value='1' THEN 1 ELSE 0 END) AS has1,
+           MAX(CASE WHEN meta_value='0' THEN 1 ELSE 0 END) AS has0
+    FROM {$table_meta}
+    WHERE meta_key = 'proyectos_nuevos_fin'
+    GROUP BY post_id
+  ) pm ON pm.post_id = p.ID
+  WHERE p.post_type = 'reg_inversionistas'
+    AND p.post_status IN ('draft')
+";
+
+    $tot = $wpdb->get_row($sql, ARRAY_A);
+    $si  = intval($tot['si']);
+    $no  = intval($tot['no']);
+    $fa  = intval($tot['faltante']);
+    $total_rows = $si + $no + $fa;
+
+    $base_url = remove_query_arg(array('paged'), $_SERVER['REQUEST_URI']);
+    ?>
+    <div id="pmx-inv-nuevos" class="wrap">
+      <h1 style="margin-bottom:10px;">Preferencia “Proyectos nuevos” — Inversionistas</h1>
+
+      <p style="margin:8px 0 16px 0;color:#374151;">
+        Total: <strong><?php echo number_format_i18n($total_rows); ?></strong> &nbsp;·&nbsp;
+        ON: <strong style="color:#065f46;"><?php echo number_format_i18n($si); ?></strong> &nbsp;·&nbsp;
+        OFF: <strong style="color:#991b1b;"><?php echo number_format_i18n($no); ?></strong> &nbsp;·&nbsp;
+        FALTAN: <strong style="color:#374151;"><?php echo number_format_i18n($fa); ?></strong>
+      </p>
+
+      <form method="get" style="margin-bottom:12px;">
+        <input type="hidden" name="page" value="pmx-inversionistas-nuevos">
+        <input type="text" name="s" value="<?php echo esc_attr($s); ?>" placeholder="Buscar por título..." class="regular-text">
+        <button class="button">Buscar</button>
+      </form>
+
+     
+	  
+	  <form method="post" style="margin:10px 0 18px 0;">
+  <?php wp_nonce_field('pmx_inv_nuevos','pmx_inv_nuevos_nonce'); ?>
+  <button name="mark_missing" id="pmx-mark-missing" class="button button-primary" style="margin-right:8px;">
+    Marcar solo los que faltan
+  </button>
+  <button name="mark_all" id="pmx-mark-all" class="button" style="margin-right:8px;">
+    Marcar TODOS (forzar ON)
+  </button>
+  <button name="unmark_all" id="pmx-unmark-all" class="button">
+    Desmarcar TODOS (forzar OFF)
+  </button>
+</form>
+
+
+      <div class="pmx-card">
+        <style>
+          /* Quitar límites de ancho y usar todo el espacio */
+          #pmx-inv-nuevos .pmx-card{ width:100%; max-width:none; background:#fff; border:1px solid #e5e7eb; border-radius:8px; overflow:hidden; }
+          /* Contenedor con scroll horizontal si hiciera falta */
+          #pmx-inv-nuevos .pmx-inv-wrap{ width:100%; overflow-x:auto; }
+          /* Tabla a 100% y sin table-layout:fixed (evita apilar letras) */
+          #pmx-inv-nuevos .pmx-inv-table{ width:100% !important; table-layout:auto !important; margin:0; }
+          #pmx-inv-nuevos .pmx-inv-table th, 
+          #pmx-inv-nuevos .pmx-inv-table td{
+            white-space:normal !important; word-break:normal !important; overflow-wrap:anywhere; vertical-align:middle;
+          }
+          /* Anchos sugeridos */
+          #pmx-inv-nuevos .pmx-inv-table .col-id{ width:90px; }
+          #pmx-inv-nuevos .pmx-inv-table .col-email{ width:28%; }
+          #pmx-inv-nuevos .pmx-inv-table .col-status{ width:160px; text-align:center; }
+          #pmx-inv-nuevos .pmx-inv-table .col-actions{ width:160px; text-align:center; }
+          #pmx-inv-nuevos .pmx-inv-table .col-nombre{ width:auto; }
+          #pmx-inv-nuevos{ max-width:none; }
+          .pmx-toggle-nuevos { text-decoration:none; cursor:pointer; display:inline-block; }
+          .pmx-toggle-nuevos.is-loading { opacity:.6; pointer-events:none; }
+        </style>
+
+        <div class="pmx-inv-wrap">
+          <table class="wp-list-table widefat striped table-view-list pmx-inv-table">
+            <thead>
+              <tr>
+                <th class="col-id">ID</th>
+                <th class="col-nombre">Nombre / Título</th>
+                <th class="col-email">Email</th>
+                <th class="col-status">Preferencia</th>
+                <th class="col-actions">Acceso</th>
+              </tr>
+            </thead>
+            <tbody>
+            <?php
+            if ($q->have_posts()):
+              while ($q->have_posts()): $q->the_post();
+                $post_id = get_the_ID();
+                $title   = get_the_title();
+                $email   = pmx_inv_get_email($post_id);
+                $st      = pmx_nuevos_status($post_id);
+                ?>
+                <tr>
+                  <td class="col-id"><?php echo intval($post_id); ?></td>
+                  <td class="col-nombre">
+                    <a href="<?php echo esc_url(get_edit_post_link($post_id)); ?>">
+                      <?php echo esc_html($title ?: '(sin título)'); ?>
+                    </a>
+                  </td>
+                  <td class="col-email"><?php echo esc_html($email); ?></td>
+                  <td class="col-status">
+                    <a href="#"
+                       class="pmx-toggle-nuevos"
+                       data-post="<?php echo esc_attr($post_id); ?>"
+                       data-status="<?php echo esc_attr($st); ?>"
+                       data-nonce="<?php echo esc_attr($nonce_toggle); ?>"
+                       title="Alternar ON/OFF">
+                      <?php echo pmx_status_badge($st); ?>
+                    </a>
+                  </td>
+                  <td class="col-actions">
+                    <a class="button button-small" href="<?php echo esc_url(get_edit_post_link($post_id)); ?>">Editar</a>
+                    <!-- <a class="button button-small" target="_blank" href="<?php echo esc_url(get_permalink($post_id)); ?>">Ver</a> -->
+                  </td>
+                </tr>
+                <?php
+              endwhile;
+              wp_reset_postdata();
+            else:
+              echo '<tr><td colspan="5">Sin resultados.</td></tr>';
+            endif;
+            ?>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <?php if ($q->max_num_pages > 1): ?>
+        <div class="tablenav" style="margin-top:10px;">
+          <div class="tablenav-pages">
+            <?php
+            echo paginate_links( array(
+              'base'      => add_query_arg('paged','%#%', $base_url),
+              'format'    => '',
+              'prev_text' => '&laquo;',
+              'next_text' => '&raquo;',
+              'total'     => $q->max_num_pages,
+              'current'   => $paged,
+            ) );
+            ?>
+          </div>
+        </div>
+      <?php endif; ?>
+
+      <script>
+  // Confirmación: "Marcar solo los que faltan"
+  document.addEventListener('click', function(e){
+    var btn = e.target.closest('#pmx-mark-missing');
+    if (!btn) return;
+    var msg = 'Esto marcará con ON a todos los inversionistas que NO tienen la preferencia guardada (FALTA).\n' +
+              'No cambiará a quienes ya estén ON u OFF.\n\n¿Deseas continuar?';
+    if (!confirm(msg)) { e.preventDefault(); }
+  });
+
+  // Confirmación: "Marcar TODOS (forzar ON)"
+  document.addEventListener('click', function(e){
+    var btn = e.target.closest('#pmx-mark-all');
+    if (!btn) return;
+    var msg = 'Esto pondrá en ON a TODOS los inversionistas (acción masiva),\n' +
+              'incluyendo a quienes actualmente están OFF o FALTA.\n\n¿Confirmas?';
+    if (!confirm(msg)) { e.preventDefault(); }
+  });
+
+  // (ya lo tenías) Confirmación: "Desmarcar TODOS (forzar OFF)"
+  document.addEventListener('click', function(e){
+    var btn = e.target.closest('#pmx-unmark-all');
+    if (!btn) return;
+    var ok = confirm('¿Seguro que deseas poner en OFF sin importar el estatus de la preferencia a TODOS los inversionistas? Esta acción afectará a todos.');
+    if (!ok) { e.preventDefault(); }
+  });
+
+  // (ya lo tenía) Toggle ON/OFF con clic en el badge
+  document.addEventListener('click', function(e){
+    var a = e.target.closest('.pmx-toggle-nuevos');
+    if (!a) return;
+    e.preventDefault();
+
+    if (a.classList.contains('is-loading')) return;
+    var id    = a.dataset.post;
+    var curr  = a.dataset.status || '';
+    var nonce = a.dataset.nonce || '';
+    var next  = (curr === '1') ? '0' : '1'; // FALTA -> 1
+
+    a.classList.add('is-loading');
+
+    fetch(ajaxurl, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: new URLSearchParams({
+        action: 'pmx_toggle_pref_nuevos',
+        post_id: id,
+        set: next,
+        _ajax_nonce: nonce
+      })
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(resp){
+      if (resp && resp.success) {
+        a.dataset.status = resp.data.status;
+        a.innerHTML = resp.data.badge;
+      } else {
+        alert((resp && resp.data) ? resp.data : 'No se pudo actualizar.');
+      }
+    })
+    .catch(function(){
+      alert('Error de red.');
+    })
+    .finally(function(){
+      a.classList.remove('is-loading');
+    });
+  });
+</script>
+
+
+    </div>
+    <?php
+  }
+}
+
+// ======== BLOQUEO GLOBAL DEL STAMP (solo transiciones válidas lo pueden tocar) ========
+if (!function_exists('pmx_protect_stamp_hooks')) {
+  function pmx_protect_stamp_hooks(){
+    static $on = false; if ($on) return; $on = true;
+    $GLOBALS['pmx_allow_stamp'] = array();
+
+    // Bloquea UPDATE si no está autorizado
+    add_filter('update_post_metadata', function($check, $object_id, $meta_key, $meta_value, $prev_value){
+      if ($meta_key !== PMX_NUEVO_MARKED_META) return $check;
+      if (!empty($GLOBALS['pmx_allow_stamp'][$object_id])) return $check; // permitido
+      if (function_exists('pmx_log')) pmx_log('BLOCK update nuevo_marked_at pid='.$object_id.' (update no autorizado)');
+      return true; // short-circuit: no escribe en DB pero reporta "éxito"
+    }, 1, 5);
+
+    // Bloquea DELETE si no está autorizado
+    add_filter('delete_post_metadata', function($check, $object_id, $meta_key, $meta_value, $delete_all){
+      if ($meta_key !== PMX_NUEVO_MARKED_META) return $check;
+      if (!empty($GLOBALS['pmx_allow_stamp'][$object_id])) return $check; // permitido
+      if (function_exists('pmx_log')) pmx_log('BLOCK delete nuevo_marked_at pid='.$object_id.' (delete no autorizado)');
+      return true; // short-circuit
+    }, 1, 5);
+  }
+  pmx_protect_stamp_hooks();
+}
+
+// Helpers para escribir/borrar el stamp con “pase” temporal
+if (!function_exists('pmx_set_stamp_guarded')) {
+  function pmx_set_stamp_guarded($post_id, $ts){
+    $GLOBALS['pmx_allow_stamp'][$post_id] = 1;
+    $r = update_post_meta($post_id, PMX_NUEVO_MARKED_META, (int)$ts);
+    unset($GLOBALS['pmx_allow_stamp'][$post_id]);
+    return $r;
+  }
+}
+if (!function_exists('pmx_del_stamp_guarded')) {
+  function pmx_del_stamp_guarded($post_id){
+    $GLOBALS['pmx_allow_stamp'][$post_id] = 1;
+    $r = delete_post_meta($post_id, PMX_NUEVO_MARKED_META);
+    unset($GLOBALS['pmx_allow_stamp'][$post_id]);
+    return $r;
+  }
+}

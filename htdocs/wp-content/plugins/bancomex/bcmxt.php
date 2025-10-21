@@ -134,6 +134,10 @@ class bcmxt
   include_once('notification-process/classes/bmxt-async-new-projects.php');
   include_once('notification-process/classes/bmxt-main-new-projects.php');
   // ===============================
+  
+  // === NUEVO: runner TTL (SIN token, SIN admin, usa ?value=...) ===
+    include_once('notification-process/classes/bmxt-ttl-new-projects.php');  // <-- AQUI
+    // ==
 
 		
 		

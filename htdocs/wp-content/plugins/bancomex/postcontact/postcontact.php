@@ -369,6 +369,10 @@ function PostContact_form($content = null) {
       <!-- Texto primero, checkbox después -->
       <label class="checkbox-inline" style="margin:0;">
         <?php echo esc_html($lbl_item); ?>
+
+        <!-- Fuerza enviar 0 si NO se marca -->
+        <input type="hidden" name="proyectos_nuevos_fin" value="0">
+
         <input
           id="acf-field-proyectos_nuevos_fin-1"
           type="checkbox"
@@ -377,10 +381,12 @@ function PostContact_form($content = null) {
           class="validatenp"
           <?php
             if (isset($_POST['proyectos_nuevos_fin'])) {
-              echo "checked='checked'";
+              // SOLO marcar si el valor posteado es '1'
+              echo ($_POST['proyectos_nuevos_fin'] === '1') ? "checked='checked'" : "";
             } else {
+              // Cargar estado desde ACF/meta guardado
               $valor_guardado = get_field('proyectos_nuevos_fin', get_the_ID());
-              if ($valor_guardado) echo "checked='checked'";
+              echo ($valor_guardado === '1' || $valor_guardado === 1 || $valor_guardado === true) ? "checked='checked'" : "";
             }
           ?>
         />
@@ -388,6 +394,7 @@ function PostContact_form($content = null) {
     </div>
   </div>
 </div>
+
 
 
 <style>
@@ -1030,7 +1037,8 @@ function PostContact_form_add_post() {
         $captcha = $_POST['captcha'];
 		
 		// Leer el checkbox
-$proyectos_nuevos_fin = isset($_POST['proyectos_nuevos_fin']) ? true : false;
+		//$proyectos_nuevos_fin = isset($_POST['proyectos_nuevos_fin']) ? true : false;
+		$proyectos_nuevos_fin = (isset($_POST['proyectos_nuevos_fin']) && $_POST['proyectos_nuevos_fin'] === '1') ? '1' : '0';
 
         
         global $error_array;
@@ -1145,7 +1153,7 @@ $proyectos_nuevos_fin = isset($_POST['proyectos_nuevos_fin']) ? true : false;
                     ));
 					
 					// Guardar en ACF (usar el key correcto, si tienes la función get_acf_key úsala)
-update_field(get_acf_key('proyectos_nuevos_fin', 'Ficha Registro Contacto/Inversionista'), $proyectos_nuevos_fin, $post_id);
+			  update_field(get_acf_key('proyectos_nuevos_fin', 'Ficha Registro Contacto/Inversionista'),$proyectos_nuevos_fin,$post_id);
 
             update_field(get_acf_key('folio_reg_inversionista', 'Ficha Registro Contacto/Inversionista'), $value_folio, $post_id);
 
