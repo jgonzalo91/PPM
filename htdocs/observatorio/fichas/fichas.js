@@ -1413,8 +1413,10 @@ function grafica(lan='', pdf_final=0, proyecto, sostenibilidad, etapa){
             data : { m : 'GRAFICA1', id_proyecto: proyectos_select,id_ficha:sostenibilidad, lang:lan },       
             beforeSend: function (xhr) {
                 proceso("#proceso","show");
+                actualizarProgreso(5, "Obteniendo datos de la gráfica...");
             },
             success : function ( data, textStatus, jqXHR) { 
+                actualizarProgreso(10, "Preparando gráfica de sostenibilidad...");
                 grafica_soste(data, 0,lan, pdf_final, proyectos_select, sostenibilidad, etapa);
             },
             complete:function(data){
@@ -1424,7 +1426,9 @@ function grafica(lan='', pdf_final=0, proyecto, sostenibilidad, etapa){
 }
 
 function grafica_soste(data, destroye=0,lan, pdf_final=0, proyecto, sostenibilidad, etapa){
+    actualizarProgreso(15, "Creando gráfica de sostenibilidad...");
     setTimeout(function(){
+        actualizarProgreso(20, "Renderizando gráfica...");
         var g = JSON.parse(data);
         var prom_x_pro = g['promedio_x_proyecto'];
         var prom_x_pro_x_sub = g['promedio_x_proyecto_subsector']; 
@@ -1496,6 +1500,7 @@ function grafica_soste(data, destroye=0,lan, pdf_final=0, proyecto, sostenibilid
                 responsive: true,
                 animation: {
                     onComplete: function(animation){                                
+                        actualizarProgreso(30, "Guardando gráfica de sostenibilidad...");
                         save_grafica(this.toBase64Image(),lan, pdf_final, proyecto, sostenibilidad, etapa);
                     }
                 },
@@ -1554,14 +1559,20 @@ function save_grafica(img,lan, pdf_final=0, proyecto, sostenibilidad, etapa){
         type : 'POST',
         async: true,
         data : { m : 'SAVE1', imggrafica: img, id_proyecto: proyecto, id_ficha: sostenibilidad, lang:lan, pdf:'pdf_'},           
-        success : function ( data, textStatus, jqXHR) { },
+        success : function ( data, textStatus, jqXHR) { 
+            actualizarProgreso(35, "Gráfica guardada. Verificando guardado...");
+        },
         complete:function(){
-            pdf_sos_1er(pdf_final, proyecto, sostenibilidad, lan, etapa);
-            var ctx = "";
-            if(lan=='en')
-                $('#canvas_en').hide();
-            else
-                $('#canvas').hide();
+            // Pequeño delay para asegurar que el archivo se haya escrito completamente en el disco
+            setTimeout(function(){
+                actualizarProgreso(38, "Generando primer PDF...");
+                pdf_sos_1er(pdf_final, proyecto, sostenibilidad, lan, etapa);
+                var ctx = "";
+                if(lan=='en')
+                    $('#canvas_en').hide();
+                else
+                    $('#canvas').hide();
+            }, 500); // Esperar 500ms para que el archivo se guarde
         }
     })
 }
@@ -1579,7 +1590,12 @@ function pdf_sos_1er(pdf_final=0, proyecto, sostenibilidad, lang='es', etapa){
         type: 'POST',
         data: {id_sostenibilidad: id_sostennibility,id_proyecto:proyecto_id, pdf_final: pdf_final },
         url: url,
-        success: function (respuesta){},
+        beforeSend: function() {
+            actualizarProgreso(40, "Generando primer PDF (SOS_1.pdf)...");
+        },
+        success: function (respuesta){
+            actualizarProgreso(50, "Primer PDF generado. Preparando gráfica radial...");
+        },
         complete: function () {
             GraficaRadialGetValue(proyecto_id, etapa, id_sostennibility, lang);
         },
@@ -1597,8 +1613,10 @@ function GraficaRadialGetValue(idproyecto, etapa, id_ficha, lang) {
         data: {id_proyecto: idproyecto, id_etapa: etapa, id_ficha_sostenibilidad:id_ficha,get_values: 1},
         beforeSend: function (xhr) {
             $("#chartdiv_es").show();
+            actualizarProgreso(55, "Obteniendo datos de la gráfica radial...");
         },
         success: function (data) {
+            actualizarProgreso(60, "Creando gráfica radial...");
             var datos2 = JSON.parse(data);
             GraficaRadial_Crear(datos2, idproyecto, etapa, id_ficha, lang);
         },
@@ -1716,11 +1734,29 @@ function GraficaRadial_Crear(datos, idproyecto, etapa, idficha, lang) {
         valueAxis.renderer.axisAngle = chart.startAngle;
     });
 
+    // Actualizar progreso mientras se crea el gráfico (incremento más lento)
+    var progresoInterval = setInterval(function(){
+        var currentProgress = parseInt($("#proceso-porcentaje").text().replace('%', '')) || 60;
+        if(currentProgress < 75){
+            actualizarProgreso(currentProgress + 1, "Renderizando gráfica radial...");
+        } else {
+            clearInterval(progresoInterval);
+        }
+    }, 800);
+    
     setTimeout(function(){
+        clearInterval(progresoInterval);
+        actualizarProgreso(75, "Exportando imagen de la gráfica radial...");
         let options = chart.exporting.getFormatOptions("png");
         options.quality = 1;
         options.scale = 4.5;
         chart.exporting.getImage("png", options).then(function (imgData) {
+            actualizarProgreso(80, "Guardando gráfica radial...");
+            // Asegurar que la imagen esté en formato base64 completo
+            if(!imgData.startsWith('data:image/png;base64,')){
+                imgData = 'data:image/png;base64,' + imgData;
+            }
+            
             $.ajax({async: true,
                 cache: false,
                 dataType: "html",
@@ -1728,12 +1764,20 @@ function GraficaRadial_Crear(datos, idproyecto, etapa, idficha, lang) {
                 type: "POST",
                 data: {id_proyecto: idproyecto, img_grafica: imgData, id_ficha_sostenibilidad:idficha, get_values: 0},
                 before: function () {},
-                success: function (data) {},
+                success: function (data) {
+                    actualizarProgreso(85, "Gráfica radial guardada. Verificando guardado...");
+                },
                 complete: function () {
-                    if(lang=='es')
-                        pdf_giz_2('ES', idproyecto, etapa, idficha);
-                    else
-                        pdf_giz_2('EN', idproyecto, etapa, idficha);
+                    // Pequeño delay para asegurar que la gráfica radial se haya guardado en la BD
+                    setTimeout(function(){
+                        actualizarProgreso(88, "Generando segundo PDF...");
+                        // Pasar la imagen directamente para evitar problemas de sincronización
+                        var gradialParam = imgData;
+                        if(lang=='es')
+                            pdf_giz_2('ES', idproyecto, etapa, idficha, gradialParam);
+                        else
+                            pdf_giz_2('EN', idproyecto, etapa, idficha, gradialParam);
+                    }, 800); // Esperar 800ms para que se guarde en la BD
                 }
             });
         });
@@ -1757,14 +1801,26 @@ function pdf_giz_2(lang, id_pro, id_eta, id_ficha, Gradial="") {
         url: "fichas/" + file,
         beforeSend: function () {
             $("#chartdiv_es").empty().hide();
+            actualizarProgreso(90, "Generando segundo PDF (SOS_2.pdf)...");
         },
-        //success: function (respuesta){},
+        success: function (respuesta){
+            actualizarProgreso(95, "Uniendo archivos PDF...");
+        },
         complete: function () {
             if(lang=='EN'){
-                proceso("#proceso", "hide");
-                ListaFichas(id_pro);
+                actualizarProgreso(100, "¡PDF generado exitosamente!");
+                setTimeout(function(){
+                    proceso("#proceso", "hide");
+                    ListaFichas(id_pro);
+                }, 500);
             }else{
-                 grafica("en", 0, id_pro, id_ficha, id_eta);
+                // Para español, generar también el PDF en inglés, reiniciando el progreso
+                actualizarProgreso(100, "PDF en español completado. Iniciando PDF en inglés...");
+                setTimeout(function(){
+                    // Reiniciar progreso para el proceso en inglés
+                    actualizarProgreso(0, "Iniciando generación de PDF en inglés...");
+                    grafica("en", 0, id_pro, id_ficha, id_eta);
+                }, 1000);
             }
         },
         error: function (objXMLHttpRequest) {}
@@ -1774,8 +1830,20 @@ function pdf_giz_2(lang, id_pro, id_eta, id_ficha, Gradial="") {
 function proceso(item='#proceso',action='show'){
     if(action=='hide')
         $(item).modal(action);
-    else
+    else {
+        // Reiniciar el porcentaje cuando se muestra el modal
+        actualizarProgreso(0, "Iniciando proceso...");
         $(item).modal({backdrop: 'static', keyboard: false, action: action});
+    }
+}
+
+// Función para actualizar el porcentaje del proceso
+function actualizarProgreso(porcentaje, mensaje){
+    porcentaje = Math.min(100, Math.max(0, porcentaje)); // Asegurar que esté entre 0 y 100
+    $("#proceso-porcentaje").text(porcentaje + "%");
+    if(mensaje){
+        $("#proceso-mensaje-paso").text(mensaje);
+    }
 }
 
 function myCollapse(element){

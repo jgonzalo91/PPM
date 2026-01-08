@@ -20,6 +20,10 @@ $contendor->id_texto=87;
 $contendor->lang='EN';
 $textoPDF_custom = $contendor->GetTextoPDF();
 
+$contendor->id_texto=89;
+$contendor->lang='EN';
+$texto_sos_custom_en = $contendor->GetTextoPDF();
+
 # HOJA UNO
 $html .= '
 <!-- PRIMER PAGINA --->
@@ -110,7 +114,16 @@ $html .= '
 <p  style = "text-align:center;">(' . $texto2 . ' <b style="color:#037D7A">' . $nuemro_proy . '</b><b style="color:#000">)</b> </p> 
 </div>
 <div style = "text-align:center;">
-<img  src="'.$ruta_content.'/themes/enfold-child/sostenibilidad/graficas/pdf_'.$id_sostenibilidad.'-en_.png" width="576">
+';
+// Verificar que el archivo de la gráfica exista antes de incluirlo
+$ruta_grafica_en = $_SERVER["DOCUMENT_ROOT"].'/wp-content/themes/enfold-child/sostenibilidad/graficas/pdf_'.$id_sostenibilidad.'-en_.png';
+if(file_exists($ruta_grafica_en)){
+    $html .= '<img src="'.$ruta_content.'/themes/enfold-child/sostenibilidad/graficas/pdf_'.$id_sostenibilidad.'-en_.png" width="576">';
+} else {
+    // Si el archivo no existe, intentar con ruta alternativa o mostrar mensaje
+    $html .= '<!-- Gráfica no disponible aún -->';
+}
+$html .= '
 </div>
 <div style="text-align:center;">
 <img src="'.$ruta_content.'/themes/enfold-child/sostenibilidad/graficas/piegrafica_en.PNG" width="280" height="35">
@@ -118,21 +131,32 @@ $html .= '
 </div>';
 
 $html .= '
-<!-- QRCODES --->
-<div class="margenlr" style="margin-top:60px !important;font-size:12px !important;">
-<table width="100%">
-    <tr>
-        <td width="80%" style="text-align:right">
-        <a href="'.$url_qr_bid_en.'"><img class="img_border" width="60" height="60" src="' . $qr_bid_en . '" title="QR Bid" alt="QR Bid" style="margin-left:10px;"/></a></td>
-        <td width="20%" style="padding:5;">
-        <div>' . $marco_metodologico_bid_en . '</div>
-        <a href="'.$url_qr_bid_en.'">'.$textoPDF_a.'</a>
-        </td>
-    </tr>
-</table>
+<div class="margenlr" style="margin-top:5px !important;font-size:12px !important; text-align: center;">
+    
+    <div style="margin-top: 30px;"> 
+        ' . $texto_sos_custom_en . '
+    </div>
+    
+    <div style="margin-top: -15px; margin-bottom: 25px;">
+        
+        <table style="margin: 0 auto; text-align: left; border-collapse: collapse;">
+            <tr>
+                <td style="padding: 0 10px; vertical-align: middle;">
+                    <a href="'.$url_qr_bid_en.'">
+                        <img class="img_border" width="60" height="60" src="' . $qr_bid_en . '" title="QR Bid" alt="QR Bid"/>
+                    </a>
+                </td>
+                
+                <td style="padding: 0 10px; vertical-align: middle;">
+                    <div>' . $marco_metodologico_bid_en . '</div>
+                    <a href="'.$url_qr_bid_en.'">'.$textoPDF_a.'</a>
+                </td>
+            </tr>
+        </table>
+        </div>
+
 </div>
-<!--FOOTER-->
-'.$footer_en.'
+' . $footer_en . '
 </div>
 </div>';
 }

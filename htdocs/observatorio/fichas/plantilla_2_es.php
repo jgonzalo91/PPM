@@ -9,12 +9,21 @@ $info_pro = '<div style="margin-left: 1px !important; margin-right: 1px !importa
 $footer = '<div class="footer">'.$he->GetFooterSos().'</div>';
 
 // Obtenemos la imagen en base64
-if($Gradial==""){
+if($Gradial=="" || empty($Gradial)){
     $resultado = $conn_ob->query("select grafica_radial from tbl_fichas_sostenibilidad where id=".$id_ficha_sostenibilidad);
     $img = $resultado->fetch_array(MYSQLI_ASSOC);
-    $grafica_radial = $img['grafica_radial'];
+    $grafica_radial = isset($img['grafica_radial']) ? $img['grafica_radial'] : '';
 }else{
     $grafica_radial = $Gradial;
+}
+
+// Asegurar que la imagen esté en formato base64 completo para DOMPDF
+if(!empty($grafica_radial)){
+    // Si no tiene el prefijo data:image, agregarlo
+    if(strpos($grafica_radial, 'data:image') === false){
+        // Si ya tiene base64 sin el prefijo, agregar el prefijo
+        $grafica_radial = 'data:image/png;base64,' . $grafica_radial;
+    }
 }
 
 #HOJA TRES
